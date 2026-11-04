@@ -14,7 +14,8 @@ This is the implementation record for the accepted research-editor direction. Co
 - [x] Tab/Shift+Tab paragraph indentation, real inline tabs, table navigation, and list nesting.
 - [x] Exact source highlighting, scroll to passage, and repeated-match navigation.
 - [x] Saved passages visible within each source, with jump-to-article, insert, and remove actions.
-- [x] Private colored labels and `/claim`; labels are omitted from submission exports.
+- [x] Private colored labels through `/label`, Insert, or Ctrl/Cmd+Shift+L; `/claim` removed in 0.5.1. Selected words stay editable and the label appears on hover; labels are omitted from submission exports.
+- [x] Exact article quotation spelling exemption, source-refresh invalidation, and typing/citation/reader/pagination performance improvements in 0.5.1.
 - [x] `/evidence` attaches an article passage to selected writing and inserts its citation.
 - [x] Provenance gutter with status symbols and hover descriptions.
 - [x] `/ref` remains the cross-reference command; references update with object order and jump to targets.

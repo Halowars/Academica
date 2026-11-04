@@ -14,7 +14,7 @@ import {MoreHorizontal} from 'lucide-react';
 const key=new PluginKey<DecorationSet>('academic-page-flow');
 export const editorRegistry=new Map<string,Editor>();
 export const pageFlow=Extension.create({name:'academicPageFlow',addProseMirrorPlugins(){return[new Plugin({key,state:{init:(_,s)=>DecorationSet.empty,apply(tr,value){const next=tr.getMeta(key);return next===undefined?value.map(tr.mapping,tr.doc):DecorationSet.create(tr.doc,next);}},props:{decorations:state=>key.getState(state)}})];}});
-type Candidate={top:number;bottom:number;editor?:Editor;pos?:number;external?:HTMLElement;forced?:boolean};
+type Candidate={top:number;bottom:number;editor?:Editor;pos?:number;external?:HTMLElement;forced?:boolean;lineElement?:HTMLElement;lineTop?:number};
 function FrontLists({paper}:{paper:Paper}){const f=documentFormat(paper),labels=objectLabels(paper);return <>{f.contents&&<div className="writer-contents"><div data-flow-external data-flow-break="true"><h2>Contents</h2></div>{paper.sections.map((s,i)=><p key={s.id} data-flow-external><span>{sectionLabel(paper,i)}</span><span className="toc-dots"/><span>…</span></p>)}</div>}{([[f.listFigures,'figure','List of Figures'],[f.listTables,'table','List of Tables']] as const).map(([enabled,type,title])=>enabled&&<div className="writer-contents" key={type}><div data-flow-external data-flow-break="true"><h2>{title}</h2></div>{allNodes(paper,type).map(n=><p key={n.attrs?.id} data-flow-external><span>{labels[n.attrs?.id]}{n.attrs?.caption?'. '+n.attrs.caption:''}</span><span className="toc-dots"/><span>…</span></p>)}</div>)}</>;}
 function firstPositionAtLine(editor:Editor,element:HTMLElement,top:number,fallback:number){
   const walker=document.createTreeWalker(element,NodeFilter.SHOW_TEXT);let text:Node|null;
@@ -33,21 +33,22 @@ export default function PaginatedWriter({paper,sections,actions,onSpelling,onEdi
   useEffect(()=>{
     let cancelled=false;const timer=setTimeout(()=>{const el=root.current;if(!el)return;
       const editors=sections.map(s=>editorRegistry.get(s.id)).filter((e):e is Editor=>!!e&&!e.isDestroyed);
-      for(const editor of editors)editor.view.dispatch(editor.state.tr.setMeta(key,[]).setMeta('addToHistory',false));
+      for(const editor of editors)if(key.getState(editor.state)?.find().length)editor.view.dispatch(editor.state.tr.setMeta(key,[]).setMeta('addToHistory',false));
       el.querySelectorAll<HTMLElement>('[data-flow-external]').forEach(n=>n.style.paddingTop='0px');
       requestAnimationFrame(()=>{if(cancelled||!root.current)return;const base=root.current.getBoundingClientRect().top,candidates:Candidate[]=[],z=scale||1;
         for(const element of el.querySelectorAll<HTMLElement>('[data-flow-external]')){const r=element.getBoundingClientRect();candidates.push({top:(r.top-base)/z,bottom:(r.bottom-base)/z,external:element,forced:element.dataset.flowBreak==='true'});}
         for(const editor of editors)editor.state.doc.descendants((node,pos)=>{
           if(node.type.name==='table'||node.type.name==='figure'||node.type.name==='equation'||node.type.name==='pageBreak'){const element=editor.view.nodeDOM(pos) as HTMLElement|null;if(!element?.getBoundingClientRect)return false;const r=element.getBoundingClientRect();candidates.push({top:(r.top-base)/z,bottom:(r.bottom-base)/z,editor,pos,forced:node.type.name==='pageBreak'});return false;}
           if(!node.isTextblock)return;const element=editor.view.nodeDOM(pos) as HTMLElement|null;if(!element)return;const range=document.createRange();range.selectNodeContents(element);const rects=[...range.getClientRects()].filter(r=>r.height>1&&r.width>0).sort((a,b)=>a.top-b.top);const lines:{top:number;bottom:number}[]=[];for(const r of rects){const last=lines.at(-1);if(last&&Math.abs(last.top-r.top)<3)last.bottom=Math.max(last.bottom,r.bottom);else lines.push({top:r.top,bottom:r.bottom});}if(!lines.length){const r=element.getBoundingClientRect();lines.push({top:r.top,bottom:r.bottom});}
-          for(let i=0;i<lines.length;i++){const line=lines[i];candidates.push({top:(line.top-base)/z,bottom:(line.bottom-base)/z,editor,pos:i===0?pos:firstPositionAtLine(editor,element,line.top,pos)});}return false;
+          // Resolve a text offset only if this line actually needs a page gap.
+          for(let i=0;i<lines.length;i++){const line=lines[i];candidates.push({top:(line.top-base)/z,bottom:(line.bottom-base)/z,editor,pos,...(i>0?{lineElement:element,lineTop:line.top}:{})});}return false;
         });
         candidates.sort((a,b)=>a.top-b.top);let inserted=0,page=0;const decos=new Map<Editor,Decoration[]>();
         for(const c of candidates){let top=c.top+inserted,bottom=c.bottom+inserted;while(top>=(page+1)*stride+f.margin*96)page++;
           const limit=page*stride+dimensions.height-f.margin*96,usable=dimensions.height-2*f.margin*96;
-          if(c.forced||bottom>limit+.5&&c.bottom-c.top<usable){const next=(page+1)*stride+f.margin*96,space=Math.max(0,next-top);if(space>0){if(c.external)c.external.style.paddingTop=space+'px';else if(c.editor&&c.pos!==undefined){const pos=c.pos;const deco=Decoration.widget(pos,()=>{const span=document.createElement('span');span.className='editor-page-gap';span.contentEditable='false';span.setAttribute('aria-hidden','true');span.style.height=space+'px';return span;},{side:-1,key:'gap-'+pos,ignoreSelection:true});decos.set(c.editor,[...(decos.get(c.editor)||[]),deco]);}inserted+=space;page++;}}
+          if(c.forced||bottom>limit+.5&&c.bottom-c.top<usable){const next=(page+1)*stride+f.margin*96,space=Math.max(0,next-top);if(space>0){if(c.external)c.external.style.paddingTop=space+'px';else if(c.editor&&c.pos!==undefined){const pos=c.lineElement?firstPositionAtLine(c.editor,c.lineElement,c.lineTop!,c.pos):c.pos;const deco=Decoration.widget(pos,()=>{const span=document.createElement('span');span.className='editor-page-gap';span.contentEditable='false';span.setAttribute('aria-hidden','true');span.style.height=space+'px';return span;},{side:-1,key:'gap-'+pos,ignoreSelection:true});decos.set(c.editor,[...(decos.get(c.editor)||[]),deco]);}inserted+=space;page++;}}
         }
-        for(const editor of editors)editor.view.dispatch(editor.state.tr.setMeta(key,decos.get(editor)||[]).setMeta('addToHistory',false));
+        for(const editor of editors)if(decos.has(editor))editor.view.dispatch(editor.state.tr.setMeta(key,decos.get(editor)!).setMeta('addToHistory',false));
         const total=Math.max(1,page+1);setPages(total);onCount(total);
       });
     },160);return()=>{cancelled=true;clearTimeout(timer);};

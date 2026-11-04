@@ -6,18 +6,27 @@ import ieee from './csl/ieee.csl?raw';
 import vancouver from './csl/vancouver.csl?raw';
 import ama from './csl/ama.csl?raw';
 import locale from './csl/en-US.xml?raw';
-import { citedIds,citationNodes,safeLink,type Paper,type Source } from './model';
+import {walk,safeLink,type Paper,type Source,type RichNode} from './model';
 
 function names(value:string){return value.split(/\n|;/).map(s=>s.trim()).filter(Boolean).map(s=>{const i=s.indexOf(',');return i<0?{literal:s}:{family:s.slice(0,i).trim(),given:s.slice(i+1).trim()};});}
 export function toCSL(source:Source){const year=Number(source.year.match(/\d{4}/)?.[0]);return{id:source.id,type:source.type,title:source.title,author:names(source.authors),'container-title':source.container,publisher:source.publisher,volume:source.volume,issue:source.issue,page:source.pages,DOI:/^10\.\d{4,9}\//.test(source.doi)?source.doi:undefined,URL:safeLink(source.url)||undefined,...(year?{issued:{'date-parts':[[year]]}}:{}),...(source.accessed?{accessed:{'date-parts':[source.accessed.split('-').map(Number)]}}:{})};}
 export type CitationOutput={inline:Record<string,string>;bibliography:{sourceId:string;html:string}[]};
-let lastKey='',lastResult:CitationOutput={inline:{},bibliography:[]};
+const formattedInputs=new Map<string,CitationOutput>();
+const paperOutputs=new WeakMap<Paper,CitationOutput>();
+const sectionCitations=new WeakMap<RichNode,RichNode[]>();
+const sourceInputs=new WeakMap<Source,ReturnType<typeof toCSL>>();
+function citationInput(source:Source){let input=sourceInputs.get(source);if(!input){input=toCSL(source);sourceInputs.set(source,input);}return input;}
 export function formatPaper(paper:Paper):CitationOutput{
-  const nodes=citationNodes(paper),ids=citedIds(paper);const key=JSON.stringify([paper.style,paper.sources,nodes.map(n=>n.attrs)]);
-  if(lastKey===key)return lastResult;
+  const cached=paperOutputs.get(paper);if(cached)return cached;
+  const nodes=paper.sections.flatMap(s=>{let nodes=sectionCitations.get(s.content);if(!nodes){nodes=[];walk(s.content,n=>{if(n.type==='citation'||n.type==='quotation')nodes!.push(n);});sectionCitations.set(s.content,nodes);}return nodes;});
+  const ids=[...new Set(nodes.map(n=>String(n.attrs?.sourceId||'')).filter(Boolean))];
+  // Reader text, quote wording, and private notes never enter the CSL cache key.
+  const key=JSON.stringify([paper.style,paper.sources.map(s=>[citationInput(s),s.overrides?.[paper.style]]),nodes.map(n=>{const a=n.attrs||{};return[a.id,a.sourceId,a.locator,a.locatorType];})]);
+  const previous=formattedInputs.get(key);if(previous){paperOutputs.set(paper,previous);return previous;}
+  function remember(result:CitationOutput){if(formattedInputs.size>=8)formattedInputs.delete(formattedInputs.keys().next().value!);formattedInputs.set(key,result);paperOutputs.set(paper,result);return result;}
   const sourceMap=new Map(paper.sources.map(s=>[s.id,s]));const result:CitationOutput={inline:{},bibliography:[]};
-  if(!ids.length){lastKey=key;lastResult=result;return result;}
-  const engine=new CSL.Engine({retrieveLocale:()=>locale,retrieveItem:(id:string)=>toCSL(sourceMap.get(String(id))!)},{apa,mla,chicago,ieee,vancouver,ama}[paper.style],'en-US');
+  if(!ids.length)return remember(result);
+  const engine=new CSL.Engine({retrieveLocale:()=>locale,retrieveItem:(id:string)=>citationInput(sourceMap.get(String(id))!)},{apa,mla,chicago,ieee,vancouver,ama}[paper.style],'en-US');
   engine.setOutputFormat('html');engine.updateItems(ids.filter(id=>sourceMap.has(id)));
   const prior:[string,number][]=[];
   for(let index=0;index<nodes.length;index++){
@@ -29,6 +38,6 @@ export function formatPaper(paper:Paper):CitationOutput{
   }
   const bibliography=engine.makeBibliography();
   if(bibliography){const [settings,entries]=bibliography;result.bibliography=entries.map((html:string,i:number)=>{const sourceId=String(settings.entry_ids[i][0]);const source=sourceMap.get(sourceId)!;const override=source.overrides?.[paper.style];return{sourceId,html:override?'<div class="csl-entry">'+escapeHTML(override)+'</div>':html};});}
-  lastKey=key;lastResult=result;return result;
+  return remember(result);
 }
 export function escapeHTML(value:unknown){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));}
