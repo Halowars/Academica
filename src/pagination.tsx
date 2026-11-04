@@ -43,11 +43,14 @@ export default function PaginatedWriter({paper,sections,actions,onSpelling,onEdi
           // Resolve a text offset only if this line actually needs a page gap.
           for(let i=0;i<lines.length;i++){const line=lines[i];candidates.push({top:(line.top-base)/z,bottom:(line.bottom-base)/z,editor,pos,...(i>0?{lineElement:element,lineTop:line.top}:{})});}return false;
         });
-        candidates.sort((a,b)=>a.top-b.top);let inserted=0,page=0;const decos=new Map<Editor,Decoration[]>();
+        candidates.sort((a,b)=>a.top-b.top);let inserted=0,page=0;const decos=new Map<Editor,Decoration[]>(),externalGaps=new Map<HTMLElement,number>();
         for(const c of candidates){let top=c.top+inserted,bottom=c.bottom+inserted;while(top>=(page+1)*stride+f.margin*96)page++;
           const limit=page*stride+dimensions.height-f.margin*96,usable=dimensions.height-2*f.margin*96;
-          if(c.forced||bottom>limit+.5&&c.bottom-c.top<usable){const next=(page+1)*stride+f.margin*96,space=Math.max(0,next-top);if(space>0){if(c.external)c.external.style.paddingTop=space+'px';else if(c.editor&&c.pos!==undefined){const pos=c.lineElement?firstPositionAtLine(c.editor,c.lineElement,c.lineTop!,c.pos):c.pos;const deco=Decoration.widget(pos,()=>{const span=document.createElement('span');span.className='editor-page-gap';span.contentEditable='false';span.setAttribute('aria-hidden','true');span.style.height=space+'px';return span;},{side:-1,key:'gap-'+pos,ignoreSelection:true});decos.set(c.editor,[...(decos.get(c.editor)||[]),deco]);}inserted+=space;page++;}}
+          if(c.forced||bottom>limit+.5&&c.bottom-c.top<usable){const next=(page+1)*stride+f.margin*96,space=Math.max(0,next-top);if(space>0){if(c.external)externalGaps.set(c.external,space);else if(c.editor&&c.pos!==undefined){const pos=c.lineElement?firstPositionAtLine(c.editor,c.lineElement,c.lineTop!,c.pos):c.pos;const deco=Decoration.widget(pos,()=>{const span=document.createElement('span');span.className='editor-page-gap';span.contentEditable='false';span.setAttribute('aria-hidden','true');span.style.height=space+'px';return span;},{side:-1,key:'gap-'+pos,ignoreSelection:true});decos.set(c.editor,[...(decos.get(c.editor)||[]),deco]);}inserted+=space;page++;}}
         }
+        // Finish position reads before writing heading padding, which moves all
+        // later lines. This keeps lazy page-break offsets in the measured frame.
+        for(const [element,padding] of externalGaps)element.style.paddingTop=padding+'px';
         for(const editor of editors)if(decos.has(editor))editor.view.dispatch(editor.state.tr.setMeta(key,decos.get(editor)!).setMeta('addToHistory',false));
         const total=Math.max(1,page+1);setPages(total);onCount(total);
       });
