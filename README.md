@@ -21,7 +21,7 @@ The Paper library is a separate screen with explicit Open actions. The current p
 | `/figure`, `/table`, `/equation` | Insert a structured document object. |
 | `/ref` | Insert an updating cross-reference. |
 
-Alt+T selects title text, Alt+P paragraph, Alt+H heading, Alt+Q block quote. Ctrl/Command+Shift+T/P/H are alternative shortcuts. Bold, italic, underline, lists, citation, passage note, checklist, undo, and redo are in the toolbar. There is no `/quote` command or AI detector.
+Alt+T selects title text, Alt+P paragraph, Alt+H heading. Ctrl/Command+Shift+T/P/H are alternative shortcuts. Bold, italic, underline, lists, citation, passage note, checklist, undo, and redo are in the toolbar. There is no `/quote` command or AI detector.
 
 ## Sources
 
