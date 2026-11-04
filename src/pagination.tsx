@@ -31,11 +31,16 @@ export default function PaginatedWriter({paper,sections,actions,onSpelling,onEdi
   const signature=JSON.stringify(f),lastScroll=useRef(0);
   useEffect(()=>{if(!wrap.current)return;const observer=new ResizeObserver(()=>setScale(writingZoom==='fit'?Math.min(1,(wrap.current!.clientWidth-28)/dimensions.width):Number(writingZoom)));observer.observe(wrap.current);return()=>observer.disconnect();},[dimensions.width,writingZoom]);
   useEffect(()=>{
-    let cancelled=false;const timer=setTimeout(()=>{const el=root.current;if(!el)return;
+    let cancelled=false,frame=0;const timer=setTimeout(()=>{frame=requestAnimationFrame(()=>{const el=root.current;if(cancelled||!el)return;
       const editors=sections.map(s=>editorRegistry.get(s.id)).filter((e):e is Editor=>!!e&&!e.isDestroyed);
+      if(editors.some(e=>e.view.composing))return;
+      const scroll=el.closest<HTMLElement>('.page-scroll'),scrollBefore=scroll?.scrollTop||0,focused=editors.find(e=>e.isFocused),head=focused?.state.selection.head;
+      const caretBefore=focused&&head!==undefined?focused.view.coordsAtPos(head).top:undefined;
+      // Remove, measure and replace gaps in ONE animation frame. Painting the
+      // temporarily collapsed manuscript made every pause in typing jump.
       for(const editor of editors)if(key.getState(editor.state)?.find().length)editor.view.dispatch(editor.state.tr.setMeta(key,[]).setMeta('addToHistory',false));
       el.querySelectorAll<HTMLElement>('[data-flow-external]').forEach(n=>n.style.paddingTop='0px');
-      requestAnimationFrame(()=>{if(cancelled||!root.current)return;const base=root.current.getBoundingClientRect().top,candidates:Candidate[]=[],z=scale||1;
+      const base=el.getBoundingClientRect().top,candidates:Candidate[]=[],z=scale||1;
         for(const element of el.querySelectorAll<HTMLElement>('[data-flow-external]')){const r=element.getBoundingClientRect();candidates.push({top:(r.top-base)/z,bottom:(r.bottom-base)/z,external:element,forced:element.dataset.flowBreak==='true'});}
         for(const editor of editors)editor.state.doc.descendants((node,pos)=>{
           if(node.type.name==='table'||node.type.name==='figure'||node.type.name==='equation'||node.type.name==='pageBreak'){const element=editor.view.nodeDOM(pos) as HTMLElement|null;if(!element?.getBoundingClientRect)return false;const r=element.getBoundingClientRect();candidates.push({top:(r.top-base)/z,bottom:(r.bottom-base)/z,editor,pos,forced:node.type.name==='pageBreak'});return false;}
@@ -52,9 +57,12 @@ export default function PaginatedWriter({paper,sections,actions,onSpelling,onEdi
         // later lines. This keeps lazy page-break offsets in the measured frame.
         for(const [element,padding] of externalGaps)element.style.paddingTop=padding+'px';
         for(const editor of editors)if(decos.has(editor))editor.view.dispatch(editor.state.tr.setMeta(key,decos.get(editor)!).setMeta('addToHistory',false));
+        // The browser must not anchor to a disappearing gap widget. Preserve
+        // the active caret's viewport position across the completed layout.
+        if(scroll){if(focused&&head!==undefined&&caretBefore!==undefined&&!focused.isDestroyed)scroll.scrollTop+=focused.view.coordsAtPos(head).top-caretBefore;else scroll.scrollTop=scrollBefore;}
         const total=Math.max(1,page+1);setPages(total);onCount(total);
       });
-    },160);return()=>{cancelled=true;clearTimeout(timer);};
+    },160);return()=>{cancelled=true;clearTimeout(timer);cancelAnimationFrame(frame);};
   },[paper.updatedAt,sections.map(s=>s.id).join(','),signature,scale]);
   useEffect(()=>{const scroll=wrap.current?.closest('.page-scroll');if(!scroll)return;function update(){if(!root.current)return;const relative=(scroll!.getBoundingClientRect().top-root.current.getBoundingClientRect().top)/(scale||1);setActive(Math.min(pages,Math.max(1,Math.floor((relative+dimensions.height*.35)/stride)+1)));lastScroll.current=scroll!.scrollTop;}scroll.addEventListener('scroll',update,{passive:true});return()=>scroll.removeEventListener('scroll',update);},[scale,pages,stride]);
   const refs=formatPaper(paper).bibliography,full=sections.length===paper.sections.length,firstBody=sections.findIndex(s=>!['abstract','acknowledgments'].includes(s.kind||''));

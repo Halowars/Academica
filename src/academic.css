@@ -12,3 +12,5 @@
 .academic-editor[contenteditable] mark[data-label]{cursor:text}
 .label-preview mark{max-height:150px;overflow:auto;overflow-wrap:anywhere;line-height:1.7}
 .label-color-control{display:flex;align-items:center;gap:12px;padding:8px 10px;border:1px solid var(--border);border-radius:5px;background:var(--wash)}.label-color-control input[type=color]{width:48px;height:34px;min-height:34px;padding:3px;cursor:pointer;flex:none}.label-color-control input[type=color]::-webkit-color-swatch-wrapper{padding:0}.label-color-control input[type=color]::-webkit-color-swatch{border:0;border-radius:3px}.label-color-control>span{font:11px ui-monospace,monospace;color:var(--muted)}
+.page-scroll:has(.paged-writer){overflow-anchor:none;scroll-behavior:auto}
+.paged-writer,.editor-page-gap{overflow-anchor:none}
