@@ -1,16 +1,62 @@
 rules_version = '2';
+// Data model: Academica papers belong to the UID in their path. Paper fields:
+// title (<=2,000 chars), body (JSON string, <=840,000 bytes), revision (positive
+// integer), createdAt (immutable ISO string), updatedAt (ISO string).
+// Revisions: paperId (<=100 chars), name (1..150 chars), body, createdAt;
+// immutable after creation. Dates preserve imported writing history, not access rights.
+// The existing Linea /users/{uid}/drafts/current rule is preserved verbatim.
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isOwner(uid) { return request.auth != null && request.auth.uid == uid; }
+    function isoDate(value) {
+      return value is string && value.size() == 24
+        && value.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[.][0-9]{3}Z');
+    }
+    function validBody(value) { return value is string && value.size() > 0 && value.size() <= 840000; }
+    function validPaper(data) {
+      return data.keys().hasAll(['title', 'body', 'revision', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['title', 'body', 'revision', 'createdAt', 'updatedAt'])
+        && data.title is string && data.title.size() <= 2000
+        && validBody(data.body) && isoDate(data.createdAt) && isoDate(data.updatedAt)
+        && data.revision is int && data.revision > 0 && data.revision < 1000000000;
+    }
+    function validRevision(data) {
+      return data.keys().hasAll(['paperId', 'name', 'body', 'createdAt'])
+        && data.keys().hasOnly(['paperId', 'name', 'body', 'createdAt'])
+        && data.paperId is string && data.paperId.size() > 0 && data.paperId.size() <= 100
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 150
+        && validBody(data.body) && isoDate(data.createdAt);
+    }
     match /academicaUsers/{userId}/papers/{paperId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null && request.auth.uid == userId && request.resource.data.revision == 1 && request.resource.data.body is string && request.resource.data.body.size() < 850000 && request.resource.data.title is string;
-      allow update: if request.auth != null && request.auth.uid == userId && request.resource.data.revision == resource.data.revision + 1 && request.resource.data.body is string && request.resource.data.body.size() < 850000 && request.resource.data.title is string;
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && paperId.size() <= 100
+        && validPaper(request.resource.data) && request.resource.data.revision == 1;
+      allow update: if isOwner(userId) && validPaper(request.resource.data)
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.revision == resource.data.revision + 1;
       allow delete: if false;
     }
     match /academicaUsers/{userId}/revisions/{revisionId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null && request.auth.uid == userId && request.resource.data.body is string && request.resource.data.body.size() < 850000;
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && validRevision(request.resource.data);
       allow update, delete: if false;
+    }
+    match /users/{userId}/drafts/current {
+      allow read: if request.auth != null
+        && request.auth.uid == userId;
+      allow create, update: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly([
+          "activeDraftId",
+          "drafts",
+          "updatedAt"
+        ])
+        && request.resource.data.drafts is list
+        && request.resource.data.drafts.size() <= 200;
+      allow delete: if false;
+    }
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

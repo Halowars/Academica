@@ -1,5 +1,4 @@
-import {appURL} from './urls';
-import { emptySource,uid,validatePaper,allNodes,objectLabels,type Paper,type RichNode,type Source } from './model';
+import { uid,validatePaper,allNodes,objectLabels,type Paper,type RichNode,type Source } from './model';
 import { formatPaper } from './citations';
 
 function fileName(title:string){return title.replace(/[^\p{L}\p{N} ._-]/gu,'').trim().slice(0,100)||'Academica paper';}
@@ -13,26 +12,9 @@ export async function uploadFile(file:File,cloud:boolean){
   return dataURL(file);
 }
 export async function sourceFromPDF(file:File,cloud:boolean):Promise<Source>{
-  if(file.size>10000000)throw new Error('Choose a PDF smaller than 10 MB.');
-  const pdfjs=await import('pdfjs-dist');pdfjs.GlobalWorkerOptions.workerSrc=appURL('vendor/pdf.worker.min.mjs');
-  const loading=pdfjs.getDocument({data:new Uint8Array(await file.arrayBuffer())});
-  const doc=await loading.promise;
-  try{
-    if(doc.numPages>120)throw new Error('This first version supports PDFs up to 120 pages. Import a shorter excerpt.');
-    const source=emptySource();source.type='article-journal';source.title=file.name.replace(/\.pdf$/i,'');
-    const metadata=await doc.getMetadata().catch(()=>null);const info=metadata?.info as any;if(info?.Title)source.title=String(info.Title);if(info?.Author)source.authors=String(info.Author);
-    let total=0;
-    for(let number=1;number<=doc.numPages;number++){
-      const page=await doc.getPage(number),text=await page.getTextContent();let line='',lines:string[]=[];
-      for(const item of text.items){if(!('str' in item))continue;line+=item.str+' ';if(item.hasEOL){lines.push(line.trim());line='';}}
-      if(line.trim())lines.push(line.trim());const content=lines.join(' ').replace(/\s+/g,' ').trim();total+=content.length;
-      if(total>450000)throw new Error('This PDF contains too much text for one source. Import a shorter excerpt.');
-      if(content)source.passages.push({id:uid(),text:content,pdfPage:number});page.cleanup();
-    }
-    if(!source.passages.length)throw new Error('This PDF has no selectable text. Add its reference and passages manually.');
-    // Text remains portable; no billed Firebase Storage dependency.
-    return source;
-  }finally{await loading.destroy();}
+  const {extractPDF}=await import('./pdf-source');
+  const {enrichPDFSource}=await import('./source-import');
+  return enrichPDFSource(await extractPDF(await file.arrayBuffer(),file.name));
 }
 export async function exportBackup(paper:Paper){
   const urls=[...new Set([...allNodes(paper).filter(n=>n.type==='figure'||n.type==='image').map(n=>String(n.attrs?.src||'')),...paper.sources.map(s=>s.fileUrl||'')].filter(url=>url.startsWith('/api/assets/')))];

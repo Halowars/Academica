@@ -14,7 +14,7 @@ The Paper library is a separate screen with explicit Open actions. The current p
 
 | Command | Result |
 | --- | --- |
-| `/cite` | Small source picker beside the cursor; the command text disappears. |
+| `/cite` | Small source picker beside the cursor; click a title to insert immediately. |
 | `/note` | Subtle inline marker opening a private passage note. |
 | `/todo` | Inline checklist marker; completed items cross out. |
 | `/heading` | Add a manuscript section. |
@@ -27,9 +27,13 @@ Alt+T selects title text, Alt+P paragraph, Alt+H heading, Alt+Q block quote. Ctr
 
 Paste a DOI or article URL into Sources. DOI links use Crossref directly. ScienceDirect PII links are resolved through Crossref's exact alternative ID filter, so metadata does not depend on fetching a publisher page. The requested article `S0254058401005752` was verified to resolve to Somani and Radhakrishnan (2003), *Electrochromic materials and devices: present and future*, Materials Chemistry and Physics, 77(1), 117–133, DOI `10.1016/S0254-0584(01)00575-2`.
 
-PubMed links can resolve through Europe PMC. Other links attempt readable metadata only where browser cross-origin access permits it. A persistent error explains failed imports and offers manual entry with the original URL retained. The app never silently replaces failure with a blank source. Successful metadata import does not imply access to full article text. Upload a selectable-text PDF or save passages manually for the reader. Scanned PDFs require manual passages. Reference fields and per-style bibliography wording remain editable.
+PMC articles use Europe PMC’s public full-text XML API, including title, authors, date, journal details, headings, and readable paragraphs. PubMed and DOI imports also look for an available PMC copy. Direct PDF links download and extract text in the browser, then use a DOI found in the PDF to fill reference details from Crossref. Both `PMC12026796` and the SCITEPRESS `138274.pdf` link have been checked in the browser. Conference papers keep their proper CSL source type.
 
-APA 7 and MLA 9 use citeproc-js and official CSL styles. Only cited sources enter the generated bibliography. A typed quotation that exactly matches one saved passage can connect automatically; otherwise a small picker requests its source and location. Do not infer printed page numbers from PDF indexes.
+Other links attempt readable page text where browser cross-origin access permits it. The Research desk loads imported text, and attempts to fill older sources that have citation details only. It identifies partial excerpts and failed retrievals, with Retry link and Import PDF recovery. Uploading a PDF in the reader attaches its text to that existing reference. Duplicate URL imports refresh reader text while preserving manual reference edits. Metadata availability does not guarantee full-text access; no paywalls or publisher access controls are bypassed. Scanned PDFs need a text-based copy or manual passages. Reference fields and per-style bibliography wording remain editable.
+
+APA 7 and MLA 9 use citeproc-js and official CSL styles. Only cited sources enter the generated bibliography. Pasting a substantial passage or quoted text opens a small source picker; ordinary typing of quotation marks does not interrupt writing. `/cite` after a quoted passage detects it; after a paraphrase, it inserts a citation without replacing the writing. Click an article name, or press Enter on the highlighted result, to insert immediately. An optional location override remains available before choosing.
+
+Quotation checks compare wording locally against the imported article text, normalizing typography, whitespace, and PDF line-wrap hyphenation. They do not use fuzzy or AI matching. A match can fill its section/paragraph or verified printed PDF page. PDF sheet indexes are never substituted for printed pages, and repeated wording does not invent a unique location. Saved manual passages are distinguished from article verification; missing locations and unverified quotes are flagged in Review. A successful wording match does not establish that the source’s claim is correct. Quotations remain red while editing and standard academic text in the submitted paper.
 
 ## Spelling and privacy
 
@@ -39,7 +43,7 @@ Passage notes, checklists, and the general Research desk notebook are separate. 
 
 ## Free Firebase setup
 
-See [SETUP.md](SETUP.md). Firebase is optional for local use. Spark supports email/password Authentication and Firestore within its free quotas. This app does not deploy Cloud Functions, use a paid scraping proxy, or depend on Firebase Storage. Images are resized when needed and embedded in the project; original PDF files are processed locally, with extracted text stored in the project. Large projects can exceed Firestore's record limit; the UI then states that the device copy is saved and recommends a backup. Cloud saving is not claimed until Firebase confirms a write.
+See [SETUP.md](SETUP.md). Firebase is optional for local use. The deployed configuration uses the existing Linea project on Spark, email/password Authentication, and separate Academica Firestore collections. Spark supports Authentication and Firestore within its free quotas. This app does not deploy Cloud Functions, use a paid scraping proxy, or depend on Firebase Storage. Images are resized when needed and embedded in the project; original PDF files are processed locally, with extracted text stored in the project. Large projects can exceed Firestore's record limit; the UI then states that the device copy is saved and recommends a backup. Cloud saving is not claimed until Firebase confirms a write.
 
 Cloud records are under `academicaUsers/{uid}/papers` and `/revisions`, isolated by owner rules. Local account caches are also separated. Revision comparisons prevent a stale tab from overwriting a newer cloud draft. Restoring a revision saves the preceding draft first. Download project backups regularly.
 
@@ -55,7 +59,15 @@ pnpm run build
 
 `dist/` is a complete static website. `pnpm dev` starts local development. `scripts/prepare-assets.mjs` copies the matching PDF worker, spelling dictionary, Paged.js, KaTeX fonts, and license notices from locked dependencies before dev/build. Generated vendor files and `node_modules` do not belong in the source repository.
 
-GitHub: create a public repository named Academica, upload this source, then set Settings → Pages → Source to **GitHub Actions**. The included workflow tests, builds, and deploys `dist/`. Relative asset paths support project pages such as `/Academica/`; no server routes are required.
+The public repository is [Halowars/Academica](https://github.com/Halowars/Academica), deployed at [halowars.github.io/Academica](https://halowars.github.io/Academica/). Pages uses **GitHub Actions**. The included workflow tests, builds, and deploys `dist/`. Relative asset paths support project pages such as `/Academica/`; no server routes are required.
+
+The core test suite covers quotation paste behavior, slash command replacement, exact text matching, source imports, storage separation, spelling, and exports. Firestore access tests use an isolated `demo-academica` emulator project:
+
+```sh
+firebase emulators:exec --project demo-academica --only firestore "node tests/firestore.test.mjs"
+```
+
+Use a current Firebase CLI and its supported Java runtime. These tests exercise the supplied rules without production data. The shared rules preserve the original Linea drafts block; review shared-project changes before deploying them elsewhere.
 
 ## Limits
 

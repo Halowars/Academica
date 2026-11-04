@@ -1,5 +1,13 @@
 # GitHub Pages + Firebase Spark
 
+## Current deployment
+
+Academica’s web app is registered in the existing `linea-e80b7` Firebase project, using its no-cost Spark plan and default Standard Firestore database in `nam5`. The public web configuration is committed. Academica owner rules are deployed alongside the preserved Linea rule. Email/password Authentication was already enabled; no Google sign-in or project branding changes were saved.
+
+The website is hosted by GitHub Pages at https://halowars.github.io/Academica/. Open **Save & sync** and use your existing Firebase email/password account, or create an account through the app. The footer must report **Saved to cloud** before relying on cross-device sync.
+
+The following steps describe setup for another installation.
+
 ## GitHub Pages
 
 1. Create a public repository called `Academica` in your GitHub account.
@@ -25,7 +33,7 @@ These web configuration fields are public identifiers, not service-account crede
 
 3. Enable Authentication → Sign-in method → Email/Password. Add `halowars.github.io` to Authentication's authorized domains where needed.
 4. Create the default Cloud Firestore database. Select an appropriate region; the region cannot be changed later without migration. Use production rules rather than an open test database.
-5. For a **new dedicated project**, publish the supplied `firestore.rules` through Firebase Console or `firebase deploy --only firestore:rules --project YOUR_PROJECT_ID` using an authenticated Firebase CLI.
+5. For a **new dedicated project**, remove the legacy Linea match block and publish the supplied Academica `firestore.rules` through Firebase Console or `firebase deploy --only firestore:rules --project YOUR_PROJECT_ID` using an authenticated Firebase CLI.
 6. For an **existing project**, merge the `academicaUsers` match blocks into its existing rules. Do not replace Linea's or another app's rules. Academica uses a separate collection prefix.
 7. Commit the web configuration. GitHub Actions rebuilds the site.
 8. Open Save & sync in the outline and sign in or create an account. Verify that the footer reports **Saved to cloud**. If it instead says cloud unavailable, inspect the visible error and Firebase rules/configuration before relying on cross-device sync.
@@ -38,4 +46,4 @@ The old ChatGPT-hosted app and GitHub Pages have different browser storage origi
 
 ## Free-plan limits
 
-This app uses Firestore documents below 840 KB of encoded project JSON, leaving room for fields and Firestore overhead. Firebase's free quotas apply. Large images and long extracted PDFs can exceed the limit; the app preserves the local copy and reports the cloud failure. Images are embedded rather than using billed Cloud Storage. PDF originals stay local; only extracted text/source details are in the project backup. Full browser-independent article scraping is not possible on GitHub Pages + Spark without another service; DOI and exact PII metadata resolution work without a scraper.
+This app uses Firestore documents below 840 KB of encoded project JSON, leaving room for fields and Firestore overhead. Firebase's free quotas apply. Large images and long extracted PDFs can exceed the limit; the app preserves the local copy and reports the cloud failure. Images are embedded rather than using billed Cloud Storage. PDF originals stay local; only extracted text/source details are in the project backup. Universal article scraping is not possible on GitHub Pages + Spark without another service. Crossref metadata, Europe PMC open full text, CORS-accessible article pages/PDFs, and local PDF uploads work without a server proxy. Reader text is capped at 120,000 characters per source and explicitly marked partial when truncated. Large source libraries can reach the cloud document limit.

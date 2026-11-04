@@ -6,3 +6,5 @@ work/
 .firebase/
 public/vendor/
 public/spelling/
+
+*-debug.log
