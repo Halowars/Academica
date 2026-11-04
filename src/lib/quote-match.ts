@@ -47,3 +47,24 @@ export function pastedQuotation(text:string){
   if(outer)return(outer[1]||outer[2]).trim()||null;
   return value.split(/\s+/).length>=6&&value.length>=30?value:null;
 }
+
+export type QuoteOccurrence={passageId:string;locator:string;locatorType:LocatorType;parts:{passageId:string;from:number;to:number}[]};
+// Keep a UTF-16 map back to the original text, including ligatures and PDF wraps.
+export function quotationIndex(raw:string){
+  let text='',map:{from:number;to:number}[]=[];
+  const chars=Array.from(new Intl.Segmenter(undefined,{granularity:'grapheme'}).segment(raw),s=>s.segment);let offset=0;
+  for(let i=0;i<chars.length;i++){
+    const char=chars[i],start=offset;offset+=char.length;
+    if(char==='\u00ad')continue;
+    if(char==='-'&&i>0&&/\p{L}/u.test(chars[i-1])){const tail=chars.slice(i+1).join(''),wrap=tail.match(/^\s*\n\s*(?=\p{Ll})/u);if(wrap){let skipped=0;while(skipped<wrap[0].length&&i+1<chars.length){i++;skipped+=chars[i].length;offset+=chars[i].length;}continue;}}
+    const normalized=char.normalize('NFKC').replace(/[“”„]/g,'"').replace(/[‘’]/g,"'").replace(/[–—−]/g,'-');
+    for(const c of normalized){if(/\s/u.test(c)){if(text.endsWith(' ')){map[map.length-1].to=offset;continue;}if(!text)continue;text+=' ';map.push({from:start,to:offset});}else{text+=c;for(let j=0;j<c.length;j++)map.push({from:start,to:offset});}}
+  }
+  if(text.endsWith(' ')){text=text.slice(0,-1);map.pop();}return{text,map};
+}
+export function quotationOccurrences(source:Source,quote:string):QuoteOccurrence[]{
+  const needle=quotationIndex(quote).text;if(!needle)return[];const offsets:{start:number;end:number;id:string}[]=[];let raw='';
+  for(const p of source.passages){if(raw)raw+='\n';const start=raw.length;raw+=p.text;offsets.push({start,end:raw.length,id:p.id});}
+  const {text,map}=quotationIndex(raw),result:QuoteOccurrence[]=[];let at=0;
+  while(result.length<200&&(at=text.indexOf(needle,at))!==-1){const start=map[at].from,end=map[at+needle.length-1].to;const parts=offsets.filter(p=>p.end>start&&p.start<end).map(p=>({passageId:p.id,from:Math.max(0,start-p.start),to:Math.min(p.end-p.start,end-p.start)}));const first=source.passages.find(p=>p.id===parts[0]?.passageId);if(first)result.push({passageId:first.id,...passageLocation(first),parts});at+=Math.max(1,needle.length);}return result;
+}

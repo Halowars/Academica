@@ -1,0 +1,7 @@
+import type {RichNode} from './model';
+export function editableQuotes(input:RichNode):RichNode{
+  function visit(node:RichNode):RichNode[]{if(node.type==='quotation'){const a=node.attrs||{};return[{type:'text',text:'“'+(a.text||'')+'”',marks:[{type:'quoted',attrs:{citationId:a.id,sourceId:a.sourceId,passageId:a.passageId||''}}]},{type:'text',text:' '},{type:'citation',attrs:{id:a.id,sourceId:a.sourceId,locator:a.locator,locatorType:a.locatorType,passageId:a.passageId||'',quoteText:a.text,...(a.verification?{verification:a.verification}:{})}}];}return[{...node,...(node.content?{content:node.content.flatMap(visit)}:{})}];}
+  return syncQuotationText(visit(input)[0]);
+}
+export function syncQuotationText(doc:RichNode){const text=new Map<string,string>();function collect(n:RichNode){for(const m of n.marks||[])if(m.type==='quoted'&&m.attrs?.citationId)text.set(m.attrs.citationId,(text.get(m.attrs.citationId)||'')+(n.text||''));n.content?.forEach(collect);}collect(doc);function update(n:RichNode):RichNode{const quote=text.get(n.attrs?.id);return{...n,...(n.type==='citation'&&quote!==undefined?{attrs:{...n.attrs,quoteText:quote.replace(/^[“"]|[”"]$/g,'')}}:{}),...(n.content?{content:n.content.map(update)}:{})};}return update(doc);}
+export function quotedTextFromDoc(doc:RichNode,citationId:string){let text='';function visit(n:RichNode){if(n.marks?.some(m=>m.type==='quoted'&&m.attrs?.citationId===citationId))text+=n.text||'';n.content?.forEach(visit);}visit(doc);return text.replace(/^[“"]|[”"]$/g,'');}

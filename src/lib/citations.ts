@@ -1,6 +1,10 @@
 import CSL from 'citeproc';
 import apa from './csl/apa.csl?raw';
 import mla from './csl/mla.csl?raw';
+import chicago from './csl/chicago.csl?raw';
+import ieee from './csl/ieee.csl?raw';
+import vancouver from './csl/vancouver.csl?raw';
+import ama from './csl/ama.csl?raw';
 import locale from './csl/en-US.xml?raw';
 import { citedIds,citationNodes,safeLink,type Paper,type Source } from './model';
 
@@ -13,7 +17,7 @@ export function formatPaper(paper:Paper):CitationOutput{
   if(lastKey===key)return lastResult;
   const sourceMap=new Map(paper.sources.map(s=>[s.id,s]));const result:CitationOutput={inline:{},bibliography:[]};
   if(!ids.length){lastKey=key;lastResult=result;return result;}
-  const engine=new CSL.Engine({retrieveLocale:()=>locale,retrieveItem:(id:string)=>toCSL(sourceMap.get(String(id))!)},paper.style==='apa'?apa:mla,'en-US');
+  const engine=new CSL.Engine({retrieveLocale:()=>locale,retrieveItem:(id:string)=>toCSL(sourceMap.get(String(id))!)},{apa,mla,chicago,ieee,vancouver,ama}[paper.style],'en-US');
   engine.setOutputFormat('html');engine.updateItems(ids.filter(id=>sourceMap.has(id)));
   const prior:[string,number][]=[];
   for(let index=0;index<nodes.length;index++){

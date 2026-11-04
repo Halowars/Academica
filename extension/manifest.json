@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Academica Clipper",
+  "version": "0.1.0",
+  "description": "Save the article you are reading and selected evidence to Academica.",
+  "permissions": ["activeTab", "scripting", "storage", "contextMenus"],
+  "host_permissions": ["https://halowars.github.io/*"],
+  "action": {"default_title": "Save to Academica", "default_popup": "popup.html"},
+  "background": {"service_worker": "background.js"},
+  "content_scripts": [{"matches": ["https://halowars.github.io/Academica/*"], "js": ["bridge.js"], "run_at": "document_idle"}]
+}

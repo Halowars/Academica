@@ -1,6 +1,6 @@
 {
   "name": "academica",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -24,10 +24,12 @@
     "dictionary-en": "^4.0.0",
     "docx": "^9.15.0",
     "dompurify": "^3.4.17",
+    "fflate": "0.8.2",
     "firebase": "^13.2.0",
     "idb": "^8.0.4",
     "katex": "^0.19.1",
     "lucide-react": "^1.31.0",
+    "mammoth": "1.11.0",
     "nspell": "^2.1.5",
     "pagedjs": "^0.4.3",
     "pdfjs-dist": "^6.4.299",
