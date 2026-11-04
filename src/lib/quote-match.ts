@@ -3,6 +3,7 @@ import type {LocatorType,Passage,Source} from './model';
 // Only typography and PDF line wrapping are normalized. Similar wording is not evidence.
 export function normalizeQuotation(text:string){return text.normalize('NFKC').replace(/\u00ad/g,'').replace(/([\p{L}])-\s*\n\s*(?=[\p{Ll}])/gu,'$1').replace(/[“”„]/g,'"').replace(/[‘’]/g,"'").replace(/[–—−]/g,'-').replace(/\s+/g,' ').trim();}
 export function passageLocation(passage:Passage):{locator:string;locatorType:LocatorType}{
+  if(passage.locationVerified===false)return{locator:'',locatorType:'page'};
   if(passage.pdfPage)return{locator:passage.pageLabel||'',locatorType:'page'};
   if(passage.heading)return{locator:passage.heading+(passage.paragraph?', para. '+passage.paragraph:''),locatorType:'section'};
   return{locator:passage.paragraph?String(passage.paragraph):'',locatorType:'paragraph'};
