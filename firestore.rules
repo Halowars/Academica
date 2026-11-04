@@ -1,0 +1,16 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /academicaUsers/{userId}/papers/{paperId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId && request.resource.data.revision == 1 && request.resource.data.body is string && request.resource.data.body.size() < 850000 && request.resource.data.title is string;
+      allow update: if request.auth != null && request.auth.uid == userId && request.resource.data.revision == resource.data.revision + 1 && request.resource.data.body is string && request.resource.data.body.size() < 850000 && request.resource.data.title is string;
+      allow delete: if false;
+    }
+    match /academicaUsers/{userId}/revisions/{revisionId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId && request.resource.data.body is string && request.resource.data.body.size() < 850000;
+      allow update, delete: if false;
+    }
+  }
+}
