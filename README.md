@@ -1,6 +1,6 @@
 # Academica
 
-An academic writing workspace inspired by [Linea](https://github.com/Halowars/Linea). This version is a static React/Vite application for **GitHub Pages**, with optional **Firebase Authentication and Firestore on Spark**. It has no ChatGPT hosting or runtime dependency.
+An academic writing workspace inspired by [Linea](https://github.com/Halowars/Linea). This version is a static React/Vite application published through **Firebase Hosting and GitHub Pages**, with optional **Firebase Authentication and Firestore on Spark**. It has no ChatGPT hosting or runtime dependency.
 
 The original Linea repository is separate and unchanged.
 
@@ -85,7 +85,17 @@ pnpm run build
 
 `dist/` is a complete static website. `pnpm dev` starts local development. `scripts/prepare-assets.mjs` copies the matching PDF worker, spelling dictionary, Paged.js, KaTeX fonts, and license notices from locked dependencies before dev/build. Generated vendor files and `node_modules` do not belong in the source repository.
 
-The public repository is [Halowars/Academica](https://github.com/Halowars/Academica), deployed at [halowars.github.io/Academica](https://halowars.github.io/Academica/). Pages uses **GitHub Actions**. The included workflow tests, builds, and deploys `dist/`. Relative asset paths support project pages such as `/Academica/`; no server routes are required.
+The public repository is [Halowars/Academica](https://github.com/Halowars/Academica). The canonical public app is [academica-writer.web.app](https://academica-writer.web.app/), and the original [GitHub Pages site](https://halowars.github.io/Academica/) remains available. Search metadata, `robots.txt`, and `sitemap.xml` identify the Firebase URL as canonical so search engines do not treat the two deployments as competing copies.
+
+GitHub Pages uses **GitHub Actions**. The included workflow tests, builds, and deploys `dist/`. Relative asset paths support project pages such as `/Academica/`; no server routes are required. Firebase Hosting uses the separate `academica` target in `.firebaserc`; this maps only to `academica-writer` and prevents a deploy from overwriting the project's default Hosting site.
+
+After authenticating the Firebase CLI, deploy the built site with:
+
+```sh
+npx -y firebase-tools@latest deploy --only hosting:academica --project linea-e80b7
+```
+
+Never commit a Firebase service-account key, login token, or manuscript backup.
 
 The core test suite covers quotation paste behavior, slash command replacement, exact text matching, source imports, storage separation, spelling, and exports. Firestore access tests use an isolated `demo-academica` emulator project:
 

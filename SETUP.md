@@ -1,10 +1,12 @@
-# GitHub Pages + Firebase Spark
+# Firebase Hosting + GitHub Pages + Firebase Spark
 
 ## Current deployment
 
 Academica’s web app is registered in the existing `linea-e80b7` Firebase project, using its no-cost Spark plan and default Standard Firestore database in `nam5`. The public web configuration is committed. Academica owner rules are deployed alongside the preserved Linea rule. Email/password Authentication was already enabled; no Google sign-in or project branding changes were saved.
 
-The website is hosted by GitHub Pages at https://halowars.github.io/Academica/. Open **Save & sync** and use your existing Firebase email/password account, or create an account through the app. The footer must report **Saved to cloud** before relying on cross-device sync.
+The canonical website is hosted free at https://academica-writer.web.app/. The original GitHub Pages deployment remains available at https://halowars.github.io/Academica/. Both serve the same static application; canonical metadata and the sitemap point search engines to the Firebase address.
+
+Open **Save & sync** and use your existing Firebase email/password account, or create an account through the app. The footer must report **Saved to cloud** before relying on cross-device sync.
 
 The following steps describe setup for another installation.
 
@@ -14,6 +16,20 @@ The following steps describe setup for another installation.
 2. Push/upload all source files, including `.github/workflows/pages.yml`, `pnpm-lock.yaml`, and the configuration files. Do not upload `node_modules`, `work`, or generated vendor directories.
 3. Open repository Settings → Pages → Build and deployment → Source → **GitHub Actions**.
 4. The included workflow builds and publishes the static website after a push to `main`.
+
+## Firebase Hosting
+
+The existing Firebase project contains a separate Hosting site named `academica-writer`. The `.firebaserc` target named `academica` maps only to that site, so this deployment cannot overwrite the project's default Hosting site.
+
+1. Authenticate with `npx -y firebase-tools@latest login`.
+2. Build and verify the application with `pnpm test && pnpm run build`.
+3. Deploy only Academica with:
+
+```sh
+npx -y firebase-tools@latest deploy --only hosting:academica --project linea-e80b7
+```
+
+The production build is minified and does not publish source maps. Never commit a service-account key, Firebase login token, account password, or manuscript backup.
 
 ## Firebase (no billing account)
 
@@ -31,7 +47,7 @@ window.ACADEMICA_FIREBASE_CONFIG = {
 
 These web configuration fields are public identifiers, not service-account credentials. Never commit a service-account key or an account password.
 
-3. Enable Authentication → Sign-in method → Email/Password. Add `halowars.github.io` to Authentication's authorized domains where needed.
+3. Enable Authentication → Sign-in method → Email/Password. Add `halowars.github.io` and the selected Firebase Hosting domain to Authentication's authorized domains where needed.
 4. Create the default Cloud Firestore database. Select an appropriate region; the region cannot be changed later without migration. Use production rules rather than an open test database.
 5. For a **new dedicated project**, remove the legacy Linea match block and publish the supplied Academica `firestore.rules` through Firebase Console or `firebase deploy --only firestore:rules --project YOUR_PROJECT_ID` using an authenticated Firebase CLI.
 6. For an **existing project**, merge the `academicaUsers` match blocks into its existing rules. Do not replace Linea's or another app's rules. Academica uses a separate collection prefix.

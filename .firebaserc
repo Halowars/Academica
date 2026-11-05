@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "linea-e80b7"
+  },
+  "targets": {
+    "linea-e80b7": {
+      "hosting": {
+        "academica": [
+          "academica-writer"
+        ]
+      }
+    }
+  }
+}
