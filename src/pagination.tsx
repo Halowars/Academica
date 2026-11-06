@@ -16,7 +16,7 @@ import {MoreHorizontal} from 'lucide-react';
 const key=new PluginKey<DecorationSet>('academic-page-flow');
 export const editorRegistry=new Map<string,Editor>();
 export const pageFlow=Extension.create({name:'academicPageFlow',addProseMirrorPlugins(){return[new Plugin({key,state:{init:(_,s)=>DecorationSet.empty,apply(tr,value){const next=tr.getMeta(key);return next===undefined?value.map(tr.mapping,tr.doc):DecorationSet.create(tr.doc,next);}},props:{decorations:state=>key.getState(state)}})];}});
-type Candidate={top:number;bottom:number;editor?:Editor;pos?:number;external?:HTMLElement;forced?:boolean;lineElement?:HTMLElement;lineTop?:number};
+type Candidate={top:number;bottom:number;floating?:boolean;editor?:Editor;pos?:number;external?:HTMLElement;forced?:boolean;lineElement?:HTMLElement;lineTop?:number};
 function FrontLists({paper}:{paper:Paper}){const f=documentFormat(paper),labels=objectLabels(paper);return <>{f.contents&&<div className="writer-contents"><div data-flow-external data-flow-break="true"><h2>Contents</h2></div>{paper.sections.map((s,i)=><p key={s.id} data-flow-external><span>{sectionLabel(paper,i)}</span><span className="toc-dots"/><span>…</span></p>)}</div>}{([[f.listFigures,'figure','List of Figures'],[f.listTables,'table','List of Tables']] as const).map(([enabled,type,title])=>enabled&&<div className="writer-contents" key={type}><div data-flow-external data-flow-break="true"><h2>{title}</h2></div>{allNodes(paper,type).map(n=><p key={n.attrs?.id} data-flow-external><span>{labels[n.attrs?.id]}{n.attrs?.caption?'. '+n.attrs.caption:''}</span><span className="toc-dots"/><span>…</span></p>)}</div>)}</>;}
 function firstPositionAtLine(editor:Editor,element:HTMLElement,top:number,fallback:number,scale:number){
   const tolerance=3*scale;
@@ -46,11 +46,16 @@ export default function PaginatedWriter({paper,sections,focusedSectionId,actions
       const rect=el.getBoundingClientRect(),base=rect.top,candidates:Candidate[]=[],z=rect.width/dimensions.width||1;
         for(const element of el.querySelectorAll<HTMLElement>('[data-flow-external]')){const r=element.getBoundingClientRect();candidates.push({top:(r.top-base)/z,bottom:(r.bottom-base)/z,external:element,forced:element.dataset.flowBreak==='true'});}
         for(const editor of editors)editor.state.doc.descendants((node,pos)=>{
-          if(node.type.name==='table'||node.type.name==='figure'||node.type.name==='equation'||node.type.name==='pageBreak'){const element=editor.view.nodeDOM(pos) as HTMLElement|null;if(!element?.getBoundingClientRect)return false;const r=element.getBoundingClientRect();candidates.push({top:(r.top-base)/z,bottom:(r.bottom-base)/z,editor,pos,forced:node.type.name==='pageBreak'});return false;}
+          if(node.type.name==='table'||node.type.name==='figure'||node.type.name==='equation'||node.type.name==='pageBreak'){const element=editor.view.nodeDOM(pos) as HTMLElement|null;if(!element?.getBoundingClientRect)return false;const r=element.getBoundingClientRect(),floating=node.type.name==='figure'&&element.dataset.figureWrap==='wrap';candidates.push({top:(r.top-base)/z,bottom:(r.bottom-base)/z+(floating?parseFloat(getComputedStyle(element).marginBottom)||0:0),editor,pos,floating,forced:node.type.name==='pageBreak'});return false;}
           if(!node.isTextblock)return;const element=editor.view.nodeDOM(pos) as HTMLElement|null;if(!element)return;const range=document.createRange();range.selectNodeContents(element);const rects=[...range.getClientRects()].filter(r=>r.height>z&&r.width>0).sort((a,b)=>a.top-b.top);const lines:{top:number;bottom:number}[]=[];for(const r of rects){const last=lines.at(-1);if(last&&Math.abs(last.top-r.top)<3*z)last.bottom=Math.max(last.bottom,r.bottom);else lines.push({top:r.top,bottom:r.bottom});}if(!lines.length){const r=element.getBoundingClientRect();lines.push({top:r.top,bottom:r.bottom});}
           // Resolve a text offset only if this line actually needs a page gap.
           for(let i=0;i<lines.length;i++){const line=lines[i];candidates.push({top:(line.top-base)/z,bottom:(line.bottom-base)/z,editor,pos,...(i>0?{lineElement:element,lineTop:line.top}:{})});}return false;
         });
+        // Keep a floating figure and the text beside it together at page boundaries.
+        for(const floating of candidates.filter(c=>c.floating)){
+          const edge=floating.bottom;
+          for(const line of candidates)if(!line.floating&&line.editor===floating.editor&&(line.pos??-1)>(floating.pos??0)&&line.top>=floating.top-.5&&line.top<edge)floating.bottom=Math.max(floating.bottom,line.bottom);
+        }
         candidates.sort((a,b)=>a.top-b.top);let inserted=0,page=0;const decos=new Map<Editor,Decoration[]>(),externalGaps=new Map<HTMLElement,number>();
         for(const c of candidates){let top=c.top+inserted,bottom=c.bottom+inserted;while(top>=(page+1)*stride+f.margin*96)page++;
           const limit=page*stride+dimensions.height-f.margin*96,usable=dimensions.height-2*f.margin*96;

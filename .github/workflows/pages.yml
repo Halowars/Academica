@@ -1,14 +1,14 @@
 name: Build and deploy GitHub Pages
 on:
   push:
-    branches: [main]
+    branches: [main, codex/figure-live-preview]
   workflow_dispatch:
 permissions:
   contents: read
   pages: write
   id-token: write
 concurrency:
-  group: github-pages
+  group: github-pages-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   build:
@@ -26,6 +26,7 @@ jobs:
         with:
           path: dist
   deploy:
+    if: github.ref == 'refs/heads/main'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

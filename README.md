@@ -1,3 +1,7 @@
+## 0.5.8 — figures on the live page
+
+Figure controls now open beside the manuscript. Width, placement, caption, and text flow update the actual paper immediately and save as you adjust. Choose **Text beside**, then left or right, to write around an image. Captions stay with their figures in Write, Read, Paper, and Word exports. On narrow screens, the controls dock below the visible page. Duck breaks play three distinct full-volume quacks.
+
 # Academica
 
 An academic writing workspace inspired by [Linea](https://github.com/Halowars/Linea). This version is a static React/Vite application published through **Firebase Hosting and GitHub Pages**, with optional **Firebase Authentication and Firestore on Spark**. It has no ChatGPT hosting or runtime dependency.
