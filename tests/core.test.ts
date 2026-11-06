@@ -39,7 +39,8 @@ import {applyEditorLink,editorLinkTarget,normalizeEditorLink} from '../src/lib/e
 import {paragraphIndentCSS} from '../src/lib/paragraph-indent';
 import {installProjectSearchShortcut} from '../src/lib/workspace-shortcuts';
 import {pastedImage,readClipboardImage} from '../src/lib/clipboard-image';
-import {figureDimensions,figureFrameStyle} from '../src/lib/figure-layout';
+import {figureDimensions,figureFrameStyle,figureLayout,figureNodeStyle} from '../src/lib/figure-layout';
+import {figurePosition} from '../src/lib/figure-editor';
 import {grammarBlocks} from '../src/lib/grammar-analysis';
 import {checkGrammar} from '../src/lib/grammar-engine';
 import {LocalLinter} from 'harper.js';
@@ -167,6 +168,28 @@ test('Print content safely escapes closing-script sequences',()=>{const next=str
 const blobs:Blob[]=[];const originalURL=URL.createObjectURL;URL.createObjectURL=blob=>{blobs.push(blob as Blob);return originalURL(blob);};win.HTMLAnchorElement.prototype.click=function(){};
 await exportWord(p);await mkdir('work',{recursive:true});await writeFile('work/export-smoke.docx',new Uint8Array(await blobs.at(-1)!.arrayBuffer()));test('Word export produces a valid ZIP-based document',()=>assert.equal(blobs.at(-1)!.type,'application/vnd.openxmlformats-officedocument.wordprocessingml.document'));
 await exportWord(formattedPaper);const linkedWordFiles=unzipSync(new Uint8Array(await blobs.at(-1)!.arrayBuffer()));test('Word preserves true hanging indents and clickable links with readable labels',()=>{const document=strFromU8(linkedWordFiles['word/document.xml']),relationships=strFromU8(linkedWordFiles['word/_rels/document.xml.rels']);assert.ok(document.includes('w:left="720"'));assert.ok(document.includes('w:hanging="720"'));assert.ok(document.includes('<w:hyperlink'));assert.ok(document.includes('Study details'));assert.ok(relationships.includes('Target="https://example.org/paper"'));});URL.createObjectURL=originalURL;
+test('Wrapped figures preserve safe text-flow settings in backups, reading, and print',()=>{
+  const paper=structuredClone(figurePaper),attrs=paper.sections[0].content.content![0].attrs!;
+  attrs.figureWrap='wrap';attrs.figureWidth=45;attrs.figureAlign='right';
+  const restored=validatePaper(paper),saved=restored.sections[0].content.content![0].attrs!;
+  assert.equal(saved.figureWrap,'wrap');assert.equal(saved.figureWidth,45);
+  assert.equal(figureNodeStyle(saved).float,'right');assert.equal(figureNodeStyle(saved).width,'45%');
+  assert.ok(bodyHTML(restored).includes('float:right'));assert.ok(printHTML(restored).includes('float:right'));
+  assert.ok(bodyHTML(restored).includes('font-size:1em;line-height:1.5;margin-top:8px'));
+  assert.equal(figureLayout({figureWrap:'wrap',figureWidth:100,figureAlign:'left'}).width,70);
+  assert.equal(figureLayout({figureWrap:'wrap',figureAlign:'center'}).wrap,'none');
+  attrs.figureWrap='wrap;position:fixed';assert.equal(validatePaper(paper).sections[0].content.content![0].attrs!.figureWrap,'none');
+});
+test('Live figure changes find the same image after surrounding text edits and preserve prose',()=>{
+  const editor=new Editor({element:document.createElement('div'),extensions:[StarterKit,...academicExtensions(actions)],content:{type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'Before'}]},{type:'figure',attrs:{id:'live-figure',src:'data:image/png;base64,iVBORw0KGgo=',caption:'Keep this caption',figureWidth:50,figureAlign:'right',figureWrap:'wrap'}},{type:'paragraph',content:[{type:'text',text:'Text beside the figure.'}]}]}});
+  const first=figurePosition(editor.state.doc,'live-figure');assert.notEqual(first,undefined);
+  editor.commands.insertContentAt(1,'Added text. ');
+  const current=figurePosition(editor.state.doc,'live-figure',first)!;assert.ok(current>first!);
+  editor.view.dispatch(editor.state.tr.setNodeMarkup(current,undefined,{...editor.state.doc.nodeAt(current)!.attrs,figureWidth:35}));
+  assert.equal(editor.state.doc.nodeAt(current)!.attrs.figureWidth,35);assert.equal(editor.state.doc.nodeAt(current)!.attrs.caption,'Keep this caption');
+  assert.ok(editor.getText().includes('Text beside the figure.'));
+  editor.commands.deleteRange({from:current,to:current+1});assert.equal(figurePosition(editor.state.doc,'live-figure',current),undefined);editor.destroy();
+});
 const pixelPNG='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a34sAAAAASUVORK5CYII=',beforeImage=Object.getOwnPropertyDescriptor(globalThis,'Image'),beforeCanvas=document.createElement.bind(document),beforeFigureURL=URL.createObjectURL;
 try{
   Object.defineProperty(globalThis,'Image',{value:class{naturalWidth=1200;naturalHeight=600;src='';async decode(){}},configurable:true,writable:true});
@@ -175,6 +198,16 @@ try{
   const wordFigure=structuredClone(figurePaper);wordFigure.sections[0].content.content![0].attrs={...wordFigure.sections[0].content.content![0].attrs,src:pixelPNG,figureWidth:50,figureAlign:'right'};await exportWord(wordFigure);
   const files=unzipSync(new Uint8Array(await blobs.at(-1)!.arrayBuffer())),xml=new DOMParser().parseFromString(strFromU8(files['word/document.xml']),'application/xml');
   test('Word figures retain relative width, right alignment, caption placement, and embedded image data',()=>{const paragraphs=Array.from(xml.getElementsByTagName('w:p')),image=paragraphs.find(p=>p.getElementsByTagName('w:drawing').length)!,caption=paragraphs.find(p=>p.textContent?.includes('An example figure'))!;assert.ok(image);assert.equal(image.getElementsByTagName('w:jc')[0].getAttribute('w:val'),'right');assert.equal(image.getElementsByTagName('wp:extent')[0].getAttribute('cx'),String(312*9525));assert.equal(caption.getElementsByTagName('w:ind')[0].getAttribute('w:left'),'4680');assert.ok(Object.keys(files).some(name=>name.startsWith('word/media/')&&name.endsWith('.png')));});
+  wordFigure.sections[0].content.content![0].attrs!.figureWrap='wrap';
+  wordFigure.sections[0].content.content!.push({type:'paragraph',content:[{type:'text',text:'Adjacent prose continues beside the figure.'}]});
+  await exportWord(wordFigure);
+  const wrappedFiles=unzipSync(new Uint8Array(await blobs.at(-1)!.arrayBuffer())),wrappedXML=new DOMParser().parseFromString(strFromU8(wrappedFiles['word/document.xml']),'application/xml');
+  test('Word floats the image and its caption together while keeping adjacent prose editable',()=>{
+    const table=Array.from(wrappedXML.getElementsByTagName('w:tbl')).find(t=>t.getElementsByTagName('w:drawing').length)!;assert.ok(table);
+    assert.ok(table.textContent?.includes('An example figure'));
+    const position=table.getElementsByTagName('w:tblpPr')[0];assert.ok(position);assert.equal(position.getAttribute('w:horzAnchor'),'margin');assert.equal(position.getAttribute('w:vertAnchor'),'text');assert.equal(position.getAttribute('w:tblpXSpec'),'right');assert.equal(position.getAttribute('w:leftFromText'),'288');
+    assert.ok(wrappedXML.documentElement.textContent?.includes('Adjacent prose continues beside the figure.'));
+  });
 }finally{URL.createObjectURL=beforeFigureURL;(document as any).createElement=beforeCanvas;if(beforeImage)Object.defineProperty(globalThis,'Image',beforeImage);else Reflect.deleteProperty(globalThis,'Image');}
 test('Every added CSL profile produces citations and bibliography entries',()=>{for(const style of ['chicago','ieee','vancouver','ama'] as const){const paper={...p,style},out=formatPaper(paper);assert.ok(out.bibliography.length);assert.ok(Object.values(out.inline).every(text=>!text.includes('needs review')));assert.equal(validatePaper(paper).style,style);}});
 test('Physical paper settings are bounded and saved separately from appearance',()=>{const paper={...p,format:{...defaultFormat('apa'),size:100,margin:-1,lineHeight:1.5}};const restored=validatePaper(paper);assert.equal(documentFormat(restored).size,24);assert.equal(documentFormat(restored).margin,.5);assert.equal(documentFormat(restored).lineHeight,1.5);assert.ok(formatDifferences(restored).includes('lineHeight'));});

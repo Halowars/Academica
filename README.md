@@ -6,6 +6,12 @@ The original Linea repository is separate and unchanged.
 
 ## Use
 
+### 0.5.8 live figures and clearer duck breaks
+
+Figure controls open beside the manuscript. Width, placement, caption, and text flow update the actual paper immediately and save as you adjust. Choose **Text beside**, then left or right, to write around an image. Captions stay with their figures in Write, Read, Paper, and Word exports. On narrow screens, the controls dock below the visible page. Close with **Done**; the figure's menu reopens the same live controls.
+
+Duck breaks play one locally bundled, normalized CC0 quack three times at full playback volume, with 280 ms pauses. Dismissing or muting a break cancels the remaining quacks. The build pins and verifies the source recording; there are no third-party audio requests during a break.
+
 ### 0.5.7 search and duck breaks
 
 **Ctrl/Cmd+S** opens or closes project search. The shortcut is captured before editor handlers and suppresses the browser's Save Page dialog; holding it down does not repeatedly toggle search. Ordinary Ctrl/Cmd+F remains the browser's Find command. Drafts continue to autosave.

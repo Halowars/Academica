@@ -8,11 +8,11 @@ permissions:
   pages: write
   id-token: write
 concurrency:
-  group: github-pages
+  group: github-pages-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -22,14 +22,31 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
       - run: pnpm run build
+      - name: Install browser check runtime
+        run: |
+          npm install --prefix /tmp/academica-browser-check playwright@1.56.1
+          node /tmp/academica-browser-check/node_modules/playwright/cli.js install --with-deps chromium
+      - name: Check live figures and text flow
+        env:
+          ACADEMICA_PLAYWRIGHT: /tmp/academica-browser-check/node_modules/playwright/index.mjs
+        run: |
+          pnpm preview --port 4173 > /tmp/academica-preview.log 2>&1 &
+          node tests/figure-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: figure-layout-proof
+          path: work/figure-proof
+          if-no-files-found: ignore
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
   deploy:
+    if: github.ref == 'refs/heads/main'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: build
     steps:
       - name: Deploy static website
