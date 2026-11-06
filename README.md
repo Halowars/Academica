@@ -6,11 +6,19 @@ The original Linea repository is separate and unchanged.
 
 ## Use
 
+### 0.5.7 search and duck breaks
+
+**Ctrl/Cmd+S** opens or closes project search. The shortcut is captured before editor handlers and suppresses the browser's Save Page dialog; holding it down does not repeatedly toggle search. Ordinary Ctrl/Cmd+F remains the browser's Find command. Drafts continue to autosave.
+
+`/duck` shows a randomly chosen, locally bundled duck photo, confetti, and a short quack recording. It shares the puppy popup's mute setting, reduced-motion support, and audio fallback. Both animal breaks now dismiss four seconds after the command, including during slow image loads, and starting another break stops the previous sound. Media provenance is in `public/duck/CREDITS.md`.
+
+`/figure` accepts Ctrl/Cmd+V, the Paste image button, dropped images, and file selection. Clipboard access occurs only when you paste or press Paste image. Width (10–100% of the text area) and left/center/right placement have a live preview. Aspect ratio stays fixed, and the figure's menu reopens these controls. Drag the figure image to move the figure and caption together in the writing. Width and placement survive backups, Read/Paper views, HTML/PDF, and Word export. Browser clipboard restrictions show a direct paste/file fallback; iPad users can tap the empty image area and choose Paste.
+
 ### 0.5.6 writing tools
 
 `/hanging` toggles a real half-inch hanging indent on the current or selected paragraphs. Wrapped lines move inward while the first line stays at the margin. Enter continues the format; Enter on an empty paragraph or Shift+Tab ends it. This formatting is preserved in project backups, Read/Paper views, PDF, HTML, and Word export. The generated bibliography already uses hanging indents automatically.
 
-Select text and press **Ctrl/Cmd+K**, or use `/link` or Insert → Link, to add a web address with readable display text. Put the cursor inside an existing link and press the shortcut to edit or remove it. Link fields open beside the cursor. Project search is now **Ctrl/Cmd+Shift+F**, and the search icon still opens it. Web/PDF and Word exports retain the links.
+Select text and press **Ctrl/Cmd+K**, or use `/link` or Insert → Link, to add a web address with readable display text. Put the cursor inside an existing link and press the shortcut to edit or remove it. Link fields open beside the cursor. Project search is now **Ctrl/Cmd+S**, and the search icon still opens it. Web/PDF and Word exports retain the links.
 
 English grammar suggestions use [Harper](https://github.com/Automattic/harper), bundled locally under Apache 2.0. Checking runs in a worker, with a debounce and paragraph cache; no draft text is sent to a grammar service. Blue underlines open suggested changes and a per-paper Ignore action. Grammar never silently rewrites prose. Exact verified source quotations, code, linked text, and structured objects are excluded. Review → Grammar & spelling can disable grammar suggestions. Harper catches many rule-based errors, but it does not catch every grammatical issue or judge research quality.
 
@@ -50,7 +58,7 @@ The six CSL profiles are APA 7, MLA 9, Chicago 18 author–date, IEEE, NLM/Vanco
 
 Quotation text is editable; legacy protected objects migrate without losing their citation identities. Manually typed quotations are red and clickable. Closing a substantial quote with a unique exact imported-source match inserts a citation automatically. Other typed quotations remain editable and can be connected by clicking them. Clicking a linked quotation opens and highlights its exact source text; repeated matches have navigation. The gutter explains verification/connection status on hover. A wording match is not proof that an argument is valid.
 
-Saved passages now have a visible home inside each source in the Research desk. Search within articles, jump back to a saved passage, insert it, or remove it. The desk height is adjustable. `/evidence` connects a saved or imported passage to selected writing and inserts a citation. Select text and choose **Insert → Highlight & label**, or press **Ctrl/Cmd+Shift+L**, to mark a topic, thesis, claim, or custom category in your chosen color. Only the highlight appears in the manuscript; hover to read the label and click the words to edit normally. Use the same tool with a selection or cursor inside a highlight to change or remove it. `/label` opens that tool; `/claim` has been removed. `/break` adds a real page break; `/footnote` adds a numbered submission footnote. `/ref` remains the internal cross-reference command. Ctrl/Cmd+Shift+F searches the entire project, including article text, saved passages, notes, objects, and labels.
+Saved passages now have a visible home inside each source in the Research desk. Search within articles, jump back to a saved passage, insert it, or remove it. The desk height is adjustable. `/evidence` connects a saved or imported passage to selected writing and inserts a citation. Select text and choose **Insert → Highlight & label**, or press **Ctrl/Cmd+Shift+L**, to mark a topic, thesis, claim, or custom category in your chosen color. Only the highlight appears in the manuscript; hover to read the label and click the words to edit normally. Use the same tool with a selection or cursor inside a highlight to change or remove it. `/label` opens that tool; `/claim` has been removed. `/break` adds a real page break; `/footnote` adds a numbered submission footnote. `/ref` remains the internal cross-reference command. Ctrl/Cmd+S searches the entire project, including article text, saved passages, notes, objects, and labels.
 
 In 0.5.1, source-linked quotation text is excluded from spelling warnings only while its current wording exactly matches the imported article (with the same typography/PDF wrapping normalization used by verification). Missing or changed wording, manual-only saved passages, and ordinary manuscript text remain checked. Source refreshes recheck the quotation. Source matching, citation formatting, unchanged text blocks, article rendering, and page-break position lookups are cached or limited to the work that changed. Edits still reach the project store immediately, and autosave follows the edit generation rather than relying on millisecond timestamps. Run `node tests/benchmark.mjs` for a reproducible synthetic source-library performance comparison; its timing is not a hardware-independent typing-latency guarantee.
 
@@ -83,6 +91,7 @@ The Paper library is a separate screen with explicit Open actions. The current p
 | `/hanging` | Toggle a half-inch hanging indent on the current or selected paragraphs. |
 | `/link` | Add or edit a hyperlink with readable display text. |
 | `/puppy` | A four-second puppy photo, confetti, and sound break. |
+| `/duck` | A four-second duck photo, confetti, and quack break. |
 
 Alt+T selects title text, Alt+P paragraph, Alt+H heading. Ctrl/Command+Shift+T/P/H are alternative shortcuts. Bold, italic, underline, lists, citation, passage note, checklist, undo, and redo are in the toolbar. There is no `/quote` command or AI detector.
 

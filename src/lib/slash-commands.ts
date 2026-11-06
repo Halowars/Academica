@@ -16,6 +16,7 @@ export const slashCommands=[
   {name:'table',label:'Table',description:'Insert a table with a caption'},
   {name:'equation',label:'Equation',description:'Insert a numbered equation'},
   {name:'puppy',label:'Puppy break',description:'A puppy, confetti, and a little woof for four seconds'},
+  {name:'duck',label:'Duck break',description:'A duck, confetti, and a little quack for four seconds'},
 ] as const;
 
 export type SlashCommandName=(typeof slashCommands)[number]['name'];

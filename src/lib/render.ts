@@ -6,6 +6,7 @@ import {bibliographyTitle,documentFormat,sectionLabel} from './formats';
 import {installZoomGestures} from './zoom-gestures';
 import {createDocumentScaler} from './document-scaler';
 import {paragraphIndentCSS} from './paragraph-indent';
+import {figureFrameStyle,figureImageStyle,figureStyleCSS} from './figure-layout';
 
 export function renderNode(node:RichNode,paper:Paper,{annotations=false}:{annotations?:boolean}={}):string{
   const a=node.attrs||{},labels=objectLabels(paper),citations=formatPaper(paper),f=documentFormat(paper);
@@ -28,7 +29,7 @@ export function renderNode(node:RichNode,paper:Paper,{annotations=false}:{annota
   }
   if(node.type==='pageBreak')return`<div class="explicit-break" data-break="${e(a.breakKind||'page')}"></div>`;
   if(node.type==='footnote'){const index=allNodes(paper,'footnote').findIndex(n=>n.attrs?.id===a.id)+1;return`<span class="scholar-footnote" data-note-number="${index}">${e(a.text)}</span>`;}
-  if(node.type==='figure'||node.type==='image'){const src=String(a.src||'');if(!src.startsWith('/api/assets/')&&!/^data:image\/(?:png|jpeg|webp|gif);base64,/.test(src)&&!safeLink(src))return'';return`<figure id="object-${e(a.id)}"><img src="${e(src)}" alt="${e(a.alt||a.caption||'Figure')}"><figcaption><strong>${e(labels[a.id]||'Figure')}</strong>${a.caption?'. '+e(a.caption):''}</figcaption></figure>`;}
+  if(node.type==='figure'||node.type==='image'){const src=String(a.src||'');if(!src.startsWith('/api/assets/')&&!/^data:image\/(?:png|jpeg|webp|gif);base64,/.test(src)&&!safeLink(src))return'';return`<figure id="object-${e(a.id)}" style="${figureStyleCSS(figureFrameStyle(a))}"><img style="${figureStyleCSS(figureImageStyle(a))}" src="${e(src)}" alt="${e(a.alt||a.caption||'Figure')}"><figcaption><strong>${e(labels[a.id]||'Figure')}</strong>${a.caption?'. '+e(a.caption):''}</figcaption></figure>`;}
   if(node.type==='equation')return`<div class="equation" id="object-${e(a.id)}">${katex.renderToString(a.latex||'',{throwOnError:false,displayMode:true,trust:false})}<span class="equation-number">(${e((labels[a.id]||'').replace('Equation ',''))})</span></div>`;
   if(node.type==='crossref')return`<a class="cross-reference" href="#object-${e(a.targetId)}">${e(labels[a.targetId]||'reference needed')}</a>`;
   if(node.type==='table')return`<div class="table-block" id="object-${e(a.id)}"><p class="table-caption"><strong>${e(labels[a.id]||'Table')}</strong>${a.caption?'. '+e(a.caption):''}</p><table><tbody>${content()}</tbody></table></div>`;

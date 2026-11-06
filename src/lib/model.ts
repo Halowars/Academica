@@ -1,4 +1,5 @@
 import {normalizeFormat,type DocumentFormat} from './formats';
+import {figureLayout} from './figure-layout';
 export type Style = 'apa' | 'mla' | 'chicago' | 'ieee' | 'vancouver' | 'ama';
 export type LocatorType = 'page' | 'paragraph' | 'section';
 export type RichNode = { type: string; text?: string; attrs?: Record<string, any>; marks?: {type:string;attrs?:Record<string,any>}[]; content?: RichNode[] };
@@ -57,12 +58,14 @@ const allowedMarks=new Set(['bold','italic','underline','strike','code','link','
 export function normalizeDoc(input:any,budget={count:0}):RichNode {
   if(!input||typeof input!=='object'||!allowed.has(input.type)||++budget.count>50000)throw new Error('The document contains unsupported or too much content.');
   const attrs:Record<string,any>={};
-  for(const key of ['id','sourceId','text','quoteText','locator','locatorType','passageId','verification','src','caption','alt','latex','targetId','label','level','start','colspan','rowspan','colwidth','textAlign','firstIndent','hangingIndent','breakKind']){
+  for(const key of ['id','sourceId','text','quoteText','locator','locatorType','passageId','verification','src','caption','alt','latex','targetId','label','level','start','colspan','rowspan','colwidth','textAlign','firstIndent','hangingIndent','breakKind','figureWidth','figureAlign']){
     const value=input.attrs?.[key];if(typeof value==='string')attrs[key]=value.slice(0,key==='src'?15000000:key==='text'?100000:20000);else if(typeof value==='number')attrs[key]=value;else if(key==='colwidth'&&Array.isArray(value))attrs[key]=value.slice(0,20).map(Number);
   }
   if(attrs.src&&!attrs.src.startsWith('/api/assets/')&&!/^data:image\/(png|jpeg|webp|gif);base64,/.test(attrs.src)&&!safeLink(attrs.src))delete attrs.src;
   if(attrs.level)attrs.level=Math.max(1,Math.min(3,Number(attrs.level)));
   if(attrs.hangingIndent!==undefined)attrs.hangingIndent=Number.isFinite(Number(attrs.hangingIndent))?Math.max(0,Math.min(1.5,Number(attrs.hangingIndent))):0;
+  if(attrs.figureWidth!==undefined)attrs.figureWidth=figureLayout(attrs).width;
+  if(attrs.figureAlign!==undefined)attrs.figureAlign=figureLayout(attrs).align;
   const node:RichNode={type:input.type};if(input.type==='text')node.text=String(input.text||'').slice(0,1000000);if(Object.keys(attrs).length)node.attrs=attrs;
   if(Array.isArray(input.content))node.content=input.content.map((n:any)=>normalizeDoc(n,budget));
   if(Array.isArray(input.marks))node.marks=input.marks.filter((m:any)=>allowedMarks.has(m.type)).map((m:any)=>({type:m.type,...(m.type==='link'&&safeLink(m.attrs?.href||'')?{attrs:{href:safeLink(m.attrs.href)}}:m.type==='label'?{attrs:{id:String(m.attrs?.id||uid()).slice(0,100),name:String(m.attrs?.name||'Claim').slice(0,100),color:/^#[a-f0-9]{6}$/i.test(m.attrs?.color)?m.attrs.color:'#e6c578'}}:m.type==='quoted'?{attrs:Object.fromEntries(['citationId','sourceId','passageId'].map(k=>[k,String(m.attrs?.[k]||'').slice(0,300)]))}:m.type==='evidence'?{attrs:Object.fromEntries(['sourceId','passageId','text','locator','locatorType'].map(k=>[k,String(m.attrs?.[k]||'').slice(0,k==='text'?12000:300)]))}:{} )}));

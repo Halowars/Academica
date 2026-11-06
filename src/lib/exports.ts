@@ -1,6 +1,7 @@
 import { uid,validatePaper,allNodes,objectLabels,safeLink,type Paper,type RichNode,type Source } from './model';
 import { formatPaper } from './citations';
-import {documentFormat,sectionLabel,bibliographyTitle} from './formats';
+import {documentFormat,sectionLabel,bibliographyTitle,pageDimensions} from './formats';
+import {figureDimensions,figureLayout} from './figure-layout';
 import {paragraphIndent} from './paragraph-indent';
 
 function fileName(title:string){return title.replace(/[^\p{L}\p{N} ._-]/gu,'').trim().slice(0,100)||'Academica paper';}
@@ -67,10 +68,10 @@ export async function exportWord(paper:Paper){
     if(node.type==='equation')return[paragraph([run((node.attrs?.latex||'')+'    ('+(labels[node.attrs?.id]||'').replace('Equation ','')+')')],{alignment:D.AlignmentType.CENTER,indent:{firstLine:0}})];
     if(node.type==='figure'||node.type==='image'){
       const response=await fetch(node.attrs?.src);if(!response.ok)throw new Error('A figure could not be exported. Reconnect and try again.');
-      const blob=await response.blob(),url=URL.createObjectURL(blob),img=new Image();img.src=url;await img.decode();const width=Math.min(600,img.naturalWidth),height=width*img.naturalHeight/img.naturalWidth;
-      const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;canvas.getContext('2d')!.drawImage(img,0,0,width,height);URL.revokeObjectURL(url);
+      const blob=await response.blob(),url=URL.createObjectURL(blob),img=new Image();img.src=url;await img.decode();const availableWidth=pageDimensions(f).width-2*f.margin*96,{width,height}=figureDimensions(img.naturalWidth,img.naturalHeight,node.attrs||{},availableWidth),align=figureLayout(node.attrs).align,captionLeft=(availableWidth-width)*(align==='left'?0:align==='right'?1:.5);
+      const canvas=document.createElement('canvas');canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;canvas.getContext('2d')!.drawImage(img,0,0);URL.revokeObjectURL(url);
       const png=await(await fetch(canvas.toDataURL('image/png'))).arrayBuffer();
-      return[paragraph([new D.ImageRun({data:new Uint8Array(png),type:'png',transformation:{width,height},altText:{title:node.attrs?.alt||'Figure',description:node.attrs?.alt||'' ,name:labels[node.attrs?.id]||'Figure'}})],{alignment:D.AlignmentType.CENTER,indent:{firstLine:0}}),paragraph([run((labels[node.attrs?.id]||'Figure')+'. '+(node.attrs?.caption||''))],{indent:{firstLine:0}})];
+      return[paragraph([new D.ImageRun({data:new Uint8Array(png),type:'png',transformation:{width,height},altText:{title:node.attrs?.alt||'Figure',description:node.attrs?.alt||'' ,name:labels[node.attrs?.id]||'Figure'}})],{alignment:({left:D.AlignmentType.LEFT,center:D.AlignmentType.CENTER,right:D.AlignmentType.RIGHT})[align],indent:{firstLine:0},keepNext:true}),paragraph([run((labels[node.attrs?.id]||'Figure')+'. '+(node.attrs?.caption||''))],{indent:{left:captionLeft*15,right:(availableWidth-width-captionLeft)*15,firstLine:0}})];
     }
     if(node.type==='table'){
       const rows=[];for(const row of node.content||[]){const cells=[];for(const cell of row.content||[])cells.push(new D.TableCell({children:(await blocks({type:'doc',content:cell.content})).map(p=>p)}));rows.push(new D.TableRow({children:cells,tableHeader:row.content?.[0]?.type==='tableHeader'}));}
