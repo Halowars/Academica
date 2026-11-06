@@ -8,7 +8,7 @@ import {verifyHostedBuild} from '../scripts/verify-hosting.mjs';
 const directory=await mkdtemp(join(tmpdir(),'academica-hosting-'));
 const bytes=new TextEncoder().encode('current build'),hash=createHash('sha256').update(bytes).digest('hex');
 const release={version:'test',revision:'test-commit',builtAt:'test-time',assets:{'index.html':hash,'duck/test.mp3':hash}};
-const fetcher=async url=>new URL(url).pathname.endsWith('/release.json')?Response.json(release):new Response(bytes);
+const fetcher=async url=>{const path=new URL(url).pathname;if(path.endsWith('/index.html'))throw new TypeError('redirect count exceeded');return path.endsWith('/release.json')?Response.json(release):new Response(bytes);};
 try{
   await writeFile(join(directory,'release.json'),JSON.stringify(release));
   const verified=await verifyHostedBuild('https://example.org/Academica/',{directory,fetcher});

@@ -8,8 +8,9 @@ export async function verifyHostedBuild(base,{directory=defaultDirectory,fetcher
   const expected=JSON.parse(await readFile(join(directory,'release.json'),'utf8'));
   const origin=new URL(base.endsWith('/')?base:base+'/');
   async function get(path){
-    const url=new URL(path,origin);url.searchParams.set('release',expected.revision||expected.builtAt);
-    const response=await fetcher(url,{cache:'no-store',signal:AbortSignal.timeout(20000)});
+    // Hosts canonicalize index.html to the directory URL; verify the page users open.
+    const url=new URL(path==='index.html'?'./':path,origin);url.searchParams.set('release',expected.revision||expected.builtAt);
+    let response;try{response=await fetcher(url,{cache:'no-store',signal:AbortSignal.timeout(20000)});}catch(error){throw new Error(`Cannot read live ${path}: ${error.cause?.message||error.message}`,{cause:error});}
     if(!response.ok)throw new Error(`Live deployment is missing ${path} (HTTP ${response.status}).`);
     return response;
   }
