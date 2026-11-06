@@ -29,6 +29,8 @@
 .reading-zoom-surface{width:816px;margin:0 auto;}
 .reading-zoom-surface .writing-surface{width:816px!important;margin:0!important;padding:0;}
 .reading-zoom-surface .writing-page{padding:78px 76px 45px;min-height:1056px;}
+.document-zoom-stage{position:relative;margin:0 auto;overflow:clip;flex-shrink:0;}
+.document-zoom-stage>.paged-writer,.document-zoom-stage>.reading-zoom-surface{position:absolute;top:0;left:0;margin:0;transform-origin:0 0;-webkit-text-size-adjust:none;text-size-adjust:none;}
 .live-page-status{position:relative;}
 .sortable-sections{margin-left:8px;padding-left:5px;}
 .outline-section-row{display:flex;align-items:center;position:relative;border-radius:5px;min-height:37px;}

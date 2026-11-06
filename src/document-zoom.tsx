@@ -2,22 +2,25 @@ import {useEffect,useLayoutEffect,useRef,useState,type RefObject,type ReactNode}
 import {Minus,Plus,ScanLine,X} from 'lucide-react';
 import {fitScale,zoomValue} from './lib/workspace-preferences';
 import {installZoomGestures} from './lib/zoom-gestures';
+import {createDocumentScaler} from './lib/document-scaler';
 
 export type ZoomProps={zoom:string;onZoom:(value:string)=>void;onScale:(scale:number)=>void};
 
 export function useDocumentZoom(viewport:RefObject<HTMLDivElement|null>,surface:RefObject<HTMLDivElement|null>,pageWidth:number,{zoom,onZoom,onScale}:ZoomProps){
   const [available,setAvailable]=useState(0),callbacks=useRef({onZoom,onScale});callbacks.current={onZoom,onScale};
+  const scaler=useRef<ReturnType<typeof createDocumentScaler>|null>(null);
   const scale=zoom==='fit'?(available?fitScale(available,pageWidth):1):Number(zoomValue(zoom));
   useLayoutEffect(()=>{if(!viewport.current)return;const element=viewport.current;setAvailable(element.clientWidth);const observer=new ResizeObserver(()=>setAvailable(element.clientWidth));observer.observe(element);return()=>observer.disconnect();},[viewport]);
-  useLayoutEffect(()=>{if(surface.current)surface.current.style.zoom=String(scale);callbacks.current.onScale(scale);},[scale,surface]);
-  useEffect(()=>{if(!viewport.current||!surface.current)return;const scroll=viewport.current.closest<HTMLElement>('.page-scroll')||viewport.current;return installZoomGestures(viewport.current,surface.current,scroll,value=>callbacks.current.onZoom(zoomValue(value)));},[viewport,surface]);
+  useLayoutEffect(()=>{if(!surface.current)return;const controller=createDocumentScaler(surface.current);scaler.current=controller;return()=>{controller.destroy();scaler.current=null;};},[surface]);
+  useLayoutEffect(()=>{scaler.current?.setScale(scale);callbacks.current.onScale(scale);},[scale]);
+  useEffect(()=>{if(!viewport.current||!surface.current||!scaler.current)return;const scroll=viewport.current.closest<HTMLElement>('.page-scroll')||viewport.current;return installZoomGestures(viewport.current,surface.current,scroll,value=>callbacks.current.onZoom(zoomValue(value)),scaler.current);},[viewport,surface]);
   return scale;
 }
 
 export function ReadingCanvas({children,...props}:ZoomProps&{children:ReactNode}){
   const viewport=useRef<HTMLDivElement>(null),surface=useRef<HTMLDivElement>(null);
   useDocumentZoom(viewport,surface,816,props);
-  return <div className="reading-zoom-viewport" ref={viewport}><div className="reading-zoom-surface" ref={surface}>{children}</div></div>;
+  return <div className="reading-zoom-viewport" ref={viewport}><div className="document-zoom-stage"><div className="reading-zoom-surface" ref={surface}>{children}</div></div></div>;
 }
 
 export function ReadingViewport({enabled,children,...props}:ZoomProps&{enabled:boolean;children:ReactNode}){return enabled?<ReadingCanvas {...props}>{children}</ReadingCanvas>:children;}

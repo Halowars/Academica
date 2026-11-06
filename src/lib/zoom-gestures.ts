@@ -1,13 +1,13 @@
 /** Self-contained so the same gestures can run inside the print-preview iframe. */
-export function installZoomGestures(viewport:HTMLElement,surface:HTMLElement,scrollHost:HTMLElement,onCommit:(scale:number)=>void){
+export function installZoomGestures(viewport:HTMLElement,surface:HTMLElement,scrollHost:HTMLElement,onCommit:(scale:number)=>void,scaler:{getScale:()=>number;setScale:(value:number)=>void}){
   let gesture:{distance:number;scale:number;x:number;y:number}|null=null;
   let frame=0,wheelTimer:ReturnType<typeof setTimeout>|undefined,pending:{scale:number;x:number;y:number}|null=null;
-  const scale=()=>Number(surface.style.zoom)||1;
+  const scale=()=>scaler.getScale();
   const clamp=(value:number)=>Math.min(5,Math.max(.25,value));
   function apply(next:number,x:number,y:number,anchor?:{x:number;y:number}){
     const before=surface.getBoundingClientRect(),old=scale();
     const point=anchor||{x:(x-before.left)/old,y:(y-before.top)/old};
-    surface.style.zoom=String(clamp(next));
+    scaler.setScale(clamp(next));
     const after=surface.getBoundingClientRect();
     viewport.scrollLeft+=after.left+point.x*clamp(next)-x;
     scrollHost.scrollTop+=after.top+point.y*clamp(next)-y;

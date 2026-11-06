@@ -6,6 +6,10 @@ The original Linea repository is separate and unchanged.
 
 ## Use
 
+### 0.5.5 iPad zoom repair
+
+Write, Read, and Paper views scale the complete document with a transform while keeping the original page width, text metrics, and line wrapping fixed. A separate sized stage provides scrolling at the displayed size. Document text disables Safari's automatic text boosting, avoiding the CSS zoom behavior that could enlarge words independently of the sheet on iPad. Pinch, zoom controls, and Fit page width use the same scaler; printing restores the original unscaled sheets. Physical iPad Safari verification remains pending.
+
 ### 0.5.4 manuscript and library cleanup
 
 The full APA manuscript no longer places an editor-only Introduction label in the page margin. The section remains editable through its subtle right-side menu, while focused Introduction view keeps its normal heading.
