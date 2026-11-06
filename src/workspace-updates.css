@@ -55,12 +55,39 @@
 .outline-section-menu:focus-within{visibility:visible;}
 .outline-section-row.active .outline-section-menu{visibility:visible;}
 .flow-section-heading.editor-section-heading{height:0;min-height:0;}
-.flow-section-heading.editor-section-heading h2{position:absolute;top:-24px;left:calc(16px - var(--page-margin));width:calc(var(--page-margin) - 25px);font:10px/1.4 'Segoe UI',system-ui,sans-serif;text-align:left;letter-spacing:.1px;color:var(--muted);overflow-wrap:anywhere;}
+.flow-section-heading.editor-section-heading h2{display:none;}
 .writing-context{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .live-page-status{gap:16px;}
 .live-page-status>span:last-child{flex-shrink:0;}
 .paper-scope{max-width:32%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--accent);}
+.library-paper{position:relative;}
+.library-paper h2{margin-right:32px;}
+.library-paper-menu{position:absolute;right:15px;top:15px;}
+.library-paper-menu>summary{list-style:none;}
+.library-paper-menu>summary::-webkit-details-marker{display:none;}
+.library-paper-menu .menu-panel{top:31px;min-width:160px;}
+.library-paper-menu .menu-panel button{white-space:nowrap;}
+.library-trash-toggle{margin-left:auto;}
+.delete-paper-name{font:20px/1.5 Georgia,serif;margin:0 0 10px;overflow-wrap:anywhere;}
+.danger-button{color:#f1d9d4;background:#793f43;border-color:#a85f62;}
+.danger-button:hover:not(:disabled){background:#88494d!important;border-color:#bd6b6e!important;}
+.library-empty{grid-column:1/-1;}
+.slash-command-menu{position:fixed;width:min(320px,calc(100vw - 24px));max-height:min(430px,calc(100dvh - 24px));z-index:90;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--border);border-radius:9px;box-shadow:0 16px 55px #1b13202e;color:var(--ink);overflow:hidden;font-family:'DM Sans',ui-sans-serif,system-ui,sans-serif;line-height:1.35;}
+.slash-command-menu.above{transform:translateY(-100%);}
+.slash-command-heading{display:flex;align-items:center;gap:7px;padding:10px 11px 8px;border-bottom:1px solid var(--line);font-size:10px;color:var(--muted);}
+.slash-command-heading>span{font-weight:600;color:var(--ink);}
+.slash-command-heading kbd{font:10px/1 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--accent);background:var(--wash);border:1px solid var(--line);border-radius:3px;padding:4px 6px;}
+.slash-command-heading small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.slash-command-options{min-height:0;overflow:auto;padding:5px;scrollbar-width:thin;}
+.slash-command-options>button{display:flex;align-items:flex-start;gap:11px;width:100%;padding:9px 8px;border-radius:5px;color:var(--ink);}
+.slash-command-options>button:hover,.slash-command-options>button[aria-selected=true]{background:var(--wash);color:var(--ink);}
+.slash-command-options code{flex:0 0 68px;padding-top:2px;color:var(--accent);font:10px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;}
+.slash-command-options span{min-width:0;}
+.slash-command-options strong{display:block;font-size:11px;font-weight:600;}
+.slash-command-options small{display:block;margin-top:3px;color:var(--muted);font-size:9px;line-height:1.45;}
+.slash-command-help{display:flex;gap:13px;padding:8px 11px;border-top:1px solid var(--line);font-size:8px;color:var(--muted);}
 @media(pointer:coarse){.outline-section-menu{visibility:visible;}}
+@media(pointer:coarse){.slash-command-options>button{min-height:48px;padding:10px 9px;}.slash-command-options strong{font-size:12px;}.slash-command-options small{font-size:10px;}.slash-command-help{display:none;}}
 @media(max-width:479px){.outline-section-menu{visibility:visible;}}
 @container(max-width:700px){.academica-app .formatting-toolbar{scrollbar-width:none;}.academica-app .formatting-toolbar::-webkit-scrollbar{display:none;}}
 @media(max-width:1100px) and (min-width:480px){.academica-app .outline{width:200px!important;padding-left:10px!important;padding-right:10px!important;}.academica-app .layout-dock{left:8px;gap:1px;}.academica-app .layout-dock .icon-button{width:27px;min-width:27px;}.academica-app .layout-dock>span{margin:0 1px;}.academica-app .current-paper{padding-left:6px;padding-right:6px;}.academica-app .nav-item{padding-left:8px;gap:8px;}.academica-app .outline-footer{padding-left:3px;padding-right:3px;}}

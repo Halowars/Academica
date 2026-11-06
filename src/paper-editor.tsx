@@ -10,6 +10,7 @@ import {spellingExtension,type SpellingSelection} from './spelling';
 import {Extension} from '@tiptap/core';
 import {pageFlow,editorRegistry} from './pagination';
 import {editableQuotes,syncQuotationText} from './lib/editable-quotes';
+import SlashCommandMenu from './slash-command-menu';
 function PaperEditor({section,actions,readOnly=false,onSpelling}:{section:Section;actions:AcademicActions;readOnly?:boolean;onSpelling:(selection:SpellingSelection)=>void}){
   const epoch=useWorkspace(s=>s.epoch);
   const latest=useRef(actions);latest.current=actions;
@@ -19,6 +20,6 @@ function PaperEditor({section,actions,readOnly=false,onSpelling}:{section:Sectio
 
   useEffect(()=>{editor?.setEditable(!readOnly);},[editor,readOnly]);
   useEffect(()=>{if(!editor)return;const migrated=syncQuotationText(editor.getJSON() as any);if(JSON.stringify(migrated)!==JSON.stringify(section.content))useWorkspace.getState().updateSection(section.id,migrated);editorRegistry.set(section.id,editor);return()=>{if(editorRegistry.get(section.id)===editor)editorRegistry.delete(section.id);};},[editor,section.id]);
-  return <EditorContent editor={editor}/>;
+  return <><EditorContent editor={editor}/><SlashCommandMenu editor={editor} actions={callbacks}/></>;
 }
 export default memo(PaperEditor);

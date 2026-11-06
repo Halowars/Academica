@@ -19,7 +19,6 @@ try{
  await deny('Another account cannot create in owner path',setDoc(doc(bob,'academicaUsers/alice/papers/forged'),paper));
  await deny('Another account cannot update',updateDoc(doc(bob,path),{revision:2}));
  await deny('Another account cannot delete',deleteDoc(doc(bob,path)));
- await deny('Owner cannot delete papers permanently',deleteDoc(doc(alice,path)));
  await deny('Updates must advance the revision',updateDoc(doc(alice,path),{title:'stale'}));
  await deny('Updates cannot skip revision numbers',updateDoc(doc(alice,path),{revision:3}));
  await deny('Creation dates are immutable',updateDoc(doc(alice,path),{revision:2,createdAt:'2026-11-05T10:00:00.000Z'}));
@@ -31,12 +30,16 @@ try{
  await deny('Required fields checked on create',setDoc(doc(alice,'academicaUsers/alice/papers/missing'),{title:'Missing'}));
  await deny('Oversized title rejected on create',setDoc(doc(alice,'academicaUsers/alice/papers/large'),{...paper,title:'x'.repeat(2001)}));
  await pass('Owner can update with validated schema',updateDoc(doc(alice,path),{title:'Updated',revision:2,updatedAt:'2026-11-04T11:00:00.000Z'}));
+ await pass('Owner can move a paper to trash',updateDoc(doc(alice,path),{revision:3,trashedAt:'2026-11-04T12:00:00.000Z'}));
+ await pass('Owner can restore a trashed paper',updateDoc(doc(alice,path),{revision:4,trashedAt:deleteField()}));
  const version='academicaUsers/alice/revisions/snapshot',revision={paperId:'rules-test',name:'Milestone',body:paper.body,createdAt:paper.createdAt};
  await pass('Owner can save an immutable revision',setDoc(doc(alice,version),revision));
  await pass('Owner revision query is allowed',getDocs(query(collection(alice,'academicaUsers/alice/revisions'),orderBy('createdAt','desc'),limit(100))));
  await deny('Other accounts cannot read revisions',getDoc(doc(bob,version)));
  await deny('Saved revisions cannot be overwritten',updateDoc(doc(alice,version),{name:'changed'}));
  await deny('Revision schema rejects unknown fields',setDoc(doc(alice,'academicaUsers/alice/revisions/bad'),{...revision,role:'admin'}));
+ await pass('Owner can permanently delete a revision',deleteDoc(doc(alice,version)));
+ await pass('Owner can permanently delete a paper',deleteDoc(doc(alice,path)));
  await deny('Unspecified parent and subcollection paths stay private',setDoc(doc(alice,'academicaUsers/alice'),{role:'admin'}));
  await pass('Existing Linea owner draft rule still works',setDoc(doc(alice,'users/alice/drafts/current'),{drafts:[],activeDraftId:'draft',updatedAt:paper.updatedAt}));
  await deny('Existing Linea cross-account isolation remains',getDoc(doc(bob,'users/alice/drafts/current')));

@@ -1,7 +1,7 @@
 import { useEffect,useState } from 'react';
 import {initializeApp,getApps,type FirebaseOptions} from 'firebase/app';
 import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,type User} from 'firebase/auth';
-import {getFirestore,doc,getDoc,getDocs,collection,runTransaction,setDoc,query,orderBy,limit} from 'firebase/firestore';
+import {getFirestore,doc,getDoc,getDocs,collection,runTransaction,setDoc,query,orderBy,limit,where,writeBatch,deleteDoc,deleteField} from 'firebase/firestore';
 import {validatePaper,uid,type Paper} from './model';
 declare global {interface Window {ACADEMICA_FIREBASE_CONFIG:FirebaseOptions|null}}
 export type Account={user:{id:string;name:string;email:string}|null;configured:boolean;loading:boolean;signIn:(email:string,password:string,create?:boolean)=>Promise<void>;signOut:()=>Promise<void>};
@@ -23,7 +23,11 @@ export async function cloudRequest<T=any>(path:string,options?:RequestInit):Prom
     const paper=validatePaper(input.paper),body=JSON.stringify(paper);if(new TextEncoder().encode(body).length>840000)error('This paper is too large for cloud sync. Your device copy is saved; download a backup.',413);
     const ref=doc(papers,paper.id);const revision=await runTransaction(s.db,async tx=>{const snap=await tx.get(ref),base=Number(input.revision)||0;if(snap.exists()?Number(snap.data().revision)!==base:base!==0)error('A newer cloud version exists.',409);const next=base+1;tx.set(ref,{title:paper.title,body,revision:next,updatedAt:paper.updatedAt,createdAt:paper.createdAt});return next;});result={revision};
   }else if(path==='/api/papers'){
-    const snapshot=await getDocs(query(papers,orderBy('updatedAt','desc'),limit(100)));result={papers:snapshot.docs.map(d=>({id:d.id,title:d.data().title,updatedAt:d.data().updatedAt,revision:d.data().revision}))};
+    const snapshot=await getDocs(query(papers,orderBy('updatedAt','desc'),limit(100)));result={papers:snapshot.docs.map(d=>({id:d.id,title:d.data().title,updatedAt:d.data().updatedAt,revision:d.data().revision,...(d.data().trashedAt?{trashedAt:d.data().trashedAt}:{})}))};
+  }else if(url.pathname.match(/^\/api\/papers\/[^/]+\/(?:trash|restore)$/)&&options?.method==='POST'){
+    const parts=url.pathname.split('/'),id=decodeURIComponent(parts[3]),action=parts[4],ref=doc(papers,id);result=await runTransaction(s.db,async tx=>{const snap=await tx.get(ref);if(!snap.exists())error('Paper not found.',404);const revision=Number(snap.data().revision)+1,trashedAt=new Date().toISOString();tx.update(ref,action==='trash'?{revision,trashedAt}:{revision,trashedAt:deleteField()});return action==='trash'?{revision,trashedAt}:{revision};});
+  }else if(url.pathname.startsWith('/api/papers/')&&options?.method==='DELETE'){
+    const id=decodeURIComponent(url.pathname.slice('/api/papers/'.length)),ref=doc(papers,id),snap=await getDoc(ref);if(!snap.exists())error('Paper not found.',404);const saved=await getDocs(query(versions,where('paperId','==',id))),refs=saved.docs.map(row=>row.ref);for(let at=0;at<refs.length;at+=400){const batch=writeBatch(s.db);refs.slice(at,at+400).forEach(item=>batch.delete(item));await batch.commit();}await deleteDoc(ref);result={deleted:true};
   }else if(url.pathname.startsWith('/api/papers/')){
     const snapshot=await getDoc(doc(papers,decodeURIComponent(url.pathname.slice('/api/papers/'.length))));if(!snapshot.exists())error('Paper not found.',404);result={paper:validatePaper(JSON.parse(snapshot.data().body)),revision:snapshot.data().revision};
   }else if(url.pathname==='/api/revisions'&&options?.method==='POST'){

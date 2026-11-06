@@ -6,9 +6,17 @@ The original Linea repository is separate and unchanged.
 
 ## Use
 
+### 0.5.4 manuscript and library cleanup
+
+The full APA manuscript no longer places an editor-only Introduction label in the page margin. The section remains editable through its subtle right-side menu, while focused Introduction view keeps its normal heading.
+
+Paper cards now have an unobtrusive menu for moving a paper to Trash. Trash can restore a paper or permanently delete it together with its saved revisions. Signed-in actions apply to the Firebase copy as well as the local device copy; deleting the current paper opens another paper or creates a fresh one first.
+
+Typing `/` opens a small command palette beside the caret. It filters as you type and supports arrow keys, Enter, Tab, Escape, mouse, and touch without covering the manuscript.
+
 ### 0.5.3 section navigation
 
-Section rows put their organization menu on the left and drag grip on the right. Opening an individual section shows its name above the page (without the sidebar number) and its heading in the writing area. Focused Write, Read, and Paper views contain just that section, without unrelated cover pages or bibliography. Original manuscript numbering is preserved where enabled by the document format. APA's introduction has an editor-only margin label in the full manuscript, so its name and edit menu stay visible without adding an extra line to the submitted layout. Printing/PDF export returns to the full manuscript before printing.
+Section rows put their organization menu on the left and drag grip on the right. Opening an individual section shows its name above the page (without the sidebar number) and its heading in the writing area. Focused Write, Read, and Paper views contain just that section, without unrelated cover pages or bibliography. Original manuscript numbering is preserved where enabled by the document format. In a full APA manuscript the Introduction heading is omitted, as required, while its section menu remains available beside the writing. Focused Introduction view shows the normal heading. Printing/PDF export returns to the full manuscript before printing.
 
 ### 0.5.2 workspace update
 
@@ -54,6 +62,10 @@ The Paper library is a separate screen with explicit Open actions. The current p
 | `/heading` | Add a manuscript section. |
 | `/figure`, `/table`, `/equation` | Insert a structured document object. |
 | `/ref` | Insert an updating cross-reference. |
+| `/evidence` | Connect nearby writing to a saved or imported source passage. |
+| `/label` | Open the thesis/topic/claim label tool for selected text. |
+| `/break` | Insert a real page break. |
+| `/footnote` | Add a numbered submission footnote. |
 
 Alt+T selects title text, Alt+P paragraph, Alt+H heading. Ctrl/Command+Shift+T/P/H are alternative shortcuts. Bold, italic, underline, lists, citation, passage note, checklist, undo, and redo are in the toolbar. There is no `/quote` command or AI detector.
 

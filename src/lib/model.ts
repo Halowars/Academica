@@ -19,7 +19,7 @@ export type Paper = {
   format?:Partial<DocumentFormat>;sections:Section[]; sources:Source[]; annotations:Record<string,Annotation>; researchNotes:string;
   createdAt:string; updatedAt:string;
 };
-export type PaperSummary = {id:string;title:string;updatedAt:string;revision:number};
+export type PaperSummary = {id:string;title:string;updatedAt:string;revision:number;trashedAt?:string};
 export type Revision = {id:string;paperId:string;name:string;createdAt:string;paper?:Paper};
 export const uid = () => crypto.randomUUID?.()||'10000000-1000-4000-8000-100000000000'.replace(/[018]/g,c=>(Number(c)^crypto.getRandomValues(new Uint8Array(1))[0]&15>>Number(c)/4).toString(16));
 export const emptyDoc = ():RichNode => ({type:'doc',content:[{type:'paragraph'}]});
