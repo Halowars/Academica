@@ -10,16 +10,13 @@ try{
   for(let i=0;i<40;i++){try{const response=await fetch(base);if(response.ok)break;}catch{}await wait(500);}
   await page.goto(base);
   await page.getByRole('button',{name:'Edit paper details'}).waitFor({timeout:30000});
-  await page.evaluate(async()=>{
-    const {useWorkspace}=await import('/src/lib/store.ts'),{createPaper}=await import('/src/lib/model.ts');
-    const paper=createPaper();paper.id='figure-browser-check';paper.title='Figure layout check';paper.format={titlePage:false,lineHeight:2};
-    paper.sections=[{id:'figure-test-section',title:'Introduction',content:{type:'doc',content:[
-      {type:'paragraph',content:[{type:'text',text:'A figure should share the page with the surrounding explanation.'}]},
-      {type:'figure',attrs:{id:'browser-figure',src:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a34sAAAAASUVORK5CYII=',caption:'Original caption',figureWidth:50,figureAlign:'right',figureWrap:'none'}},
-      {type:'paragraph',content:[{type:'text',text:Array(32).fill('The accompanying explanation remains editable and flows beside the figure before continuing below it.').join(' ')}]}
-    ]}}];
-    useWorkspace.getState().setPaper(paper);
-  });
+  const now=new Date().toISOString(),pixel='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a34sAAAAASUVORK5CYII=';
+  const fixture={schemaVersion:1,id:'figure-browser-check',title:'Figure layout check',author:'',institution:'',course:'',instructor:'',date:now.slice(0,10),style:'apa',kind:'research',theme:'linen',format:{titlePage:false,lineHeight:2},sources:[],annotations:{},researchNotes:'',createdAt:now,updatedAt:now,sections:[{id:'figure-test-section',title:'Introduction',content:{type:'doc',content:[
+    {type:'paragraph',content:[{type:'text',text:'A figure should share the page with the surrounding explanation.'}]},
+    {type:'figure',attrs:{id:'browser-figure',src:pixel,caption:'Original caption',figureWidth:50,figureAlign:'right',figureWrap:'none'}},
+    {type:'paragraph',content:[{type:'text',text:Array(32).fill('The accompanying explanation remains editable and flows beside the figure before continuing below it.').join(' ')}]}
+  ]}}]};
+  await page.locator('input[type="file"][accept*=".json"]').setInputFiles({name:'figure-check.academica.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({format:'academica-backup',version:1,paper:fixture,assets:{}}))});
   const editor=page.locator('.academic-editor[data-section-id="figure-test-section"]');
   await editor.waitFor();await page.getByRole('button',{name:'Edit figure',exact:true}).click({force:true});
   const tools=page.getByRole('complementary',{name:'Figure tools'});await tools.waitFor();
@@ -56,6 +53,19 @@ try{
   await page.getByRole('button',{name:'Edit figure',exact:true}).click({force:true});await tools.waitFor();
   assert.equal(await slider.inputValue(),'35');assert.equal(await page.getByRole('button',{name:'Text beside',exact:true}).getAttribute('aria-pressed'),'true');
   await page.getByRole('button',{name:'Done',exact:true}).click();
+  await page.setViewportSize({width:1440,height:1000});await wait(500);
+  await editor.click();await page.keyboard.press('Control+End');await page.keyboard.press('Enter');await page.keyboard.type('/figure');await page.keyboard.press('Enter');
+  await tools.waitFor();
+  await page.getByLabel('Figure image',{exact:true}).setInputFiles({name:'test-figure.png',mimeType:'image/png',buffer:Buffer.from(pixel.split(',')[1],'base64')});
+  await page.waitForFunction(()=>document.querySelectorAll('.figure-object img').length===2);
+  const newImage=editor.locator('.figure-object img').nth(1),newInitial=(await newImage.boundingBox()).width;
+  await slider.evaluate(input=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'40');input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));});
+  await wait(400);assert.ok((await newImage.boundingBox()).width<newInitial*.6,'A new /figure must resize on the actual paper before Done');
+  await page.getByRole('button',{name:'Text beside',exact:true}).click();
+  await page.getByRole('textbox',{name:'Figure caption',exact:true}).fill('New figure caption');
+  await page.getByRole('button',{name:'Done',exact:true}).click();await tools.waitFor({state:'hidden'});
+  assert.equal(await editor.locator('.figure-object').count(),2);
+  assert.ok(!(await editor.innerText()).includes('/figure'),'The slash command must disappear after inserting the image');
   const audio=await page.evaluate(async()=>{
     window.__duckPlays=[];window.__duckEnds=[];
     const watched=new WeakSet(),original=HTMLMediaElement.prototype.play;window.__restoreMediaPlay=()=>HTMLMediaElement.prototype.play=original;
@@ -68,9 +78,9 @@ try{
     };
     const context=new AudioContext(),buffer=await context.decodeAudioData(await(await fetch('/duck/quack-distinct-v2.mp3')).arrayBuffer()),samples=buffer.getChannelData(0);
     let peak=0,power=0;for(const value of samples){peak=Math.max(peak,Math.abs(value));power+=value*value;}await context.close();
-    const {showAnimalBreak}=await import('/src/animal-break.tsx');showAnimalBreak('duck');
     return{duration:buffer.duration,peak,rms:Math.sqrt(power/samples.length)};
   });
+  await editor.locator('p:last-of-type').click();await page.keyboard.press('Control+End');await page.keyboard.press('Enter');await page.keyboard.type('/duck');await page.keyboard.press('Enter');
   await wait(3800);
   const quacks=await page.evaluate(()=>{window.__restoreMediaPlay();return{plays:window.__duckPlays,ends:window.__duckEnds};});
   assert.equal(quacks.plays.length,3,'A duck break must play exactly three quacks');assert.ok(quacks.plays.every(p=>p.volume===1),'Duck quacks must use full playback volume');

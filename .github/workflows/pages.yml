@@ -30,7 +30,7 @@ jobs:
         env:
           ACADEMICA_PLAYWRIGHT: /tmp/academica-browser-check/node_modules/playwright/index.mjs
         run: |
-          pnpm dev > /tmp/academica-preview.log 2>&1 &
+          pnpm preview --port 4173 > /tmp/academica-preview.log 2>&1 &
           node tests/figure-browser.mjs
       - uses: actions/upload-artifact@v4
         if: always()
