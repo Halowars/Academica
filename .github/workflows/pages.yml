@@ -22,6 +22,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
       - run: pnpm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: academica-release-metadata
+          path: dist/release.json
       - name: Install browser check runtime
         run: |
           npm install --prefix /tmp/academica-browser-check playwright@1.56.1
@@ -52,3 +56,18 @@ jobs:
       - name: Deploy static website
         id: deployment
         uses: actions/deploy-pages@v4
+  verify-firebase:
+    name: Verify matching Firebase release
+    if: github.ref == 'refs/heads/main'
+    needs: [build, deploy]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          name: academica-release-metadata
+          path: dist
+      - run: node scripts/verify-hosting.mjs https://academica-writer.web.app/

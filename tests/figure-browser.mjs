@@ -81,21 +81,28 @@ try{
     window.__duckPlays=[];window.__duckEnds=[];
     const watched=new WeakSet(),original=HTMLMediaElement.prototype.play;window.__restoreMediaPlay=()=>HTMLMediaElement.prototype.play=original;
     HTMLMediaElement.prototype.play=function(){
-      if(this.src.includes('/duck/quack-distinct-v2.mp3')){
-        window.__duckPlays.push({time:performance.now(),volume:this.volume});
+      if(this.src.includes('/duck/natural-three-quacks-v3.mp3')){
+        window.__duckPlays.push({time:performance.now(),volume:this.volume,rate:this.playbackRate});
         if(!watched.has(this)){watched.add(this);this.addEventListener('ended',()=>window.__duckEnds.push(performance.now()));}
       }
       return original.apply(this,arguments);
     };
-    const context=new AudioContext(),buffer=await context.decodeAudioData(await(await fetch('/duck/quack-distinct-v2.mp3')).arrayBuffer()),samples=buffer.getChannelData(0);
+    const context=new AudioContext(),buffer=await context.decodeAudioData(await(await fetch('/duck/natural-three-quacks-v3.mp3')).arrayBuffer()),samples=buffer.getChannelData(0);
     let peak=0,power=0;for(const value of samples){peak=Math.max(peak,Math.abs(value));power+=value*value;}await context.close();
-    return{duration:buffer.duration,peak,rms:Math.sqrt(power/samples.length)};
+    const windowSize=Math.round(buffer.sampleRate*.02),levels=[];
+    for(let offset=0;offset<samples.length;offset+=windowSize){const slice=samples.subarray(offset,offset+windowSize);let sum=0;for(const value of slice)sum+=value*value;levels.push(Math.sqrt(sum/slice.length));}
+    const threshold=Math.max(...levels)*.12,bursts=[];let start=-1,last=-1;
+    for(let i=0;i<levels.length;i++){if(levels[i]>threshold){if(start<0)start=i;last=i;}else if(start>=0&&i-last>=6){if((last-start+1)*.02>=.1)bursts.push({start:start*.02,end:(last+1)*.02});start=-1;}}
+    if(start>=0&&(last-start+1)*.02>=.1)bursts.push({start:start*.02,end:(last+1)*.02});
+    return{duration:buffer.duration,peak,rms:Math.sqrt(power/samples.length),bursts};
   });
   await editor.locator('p:last-of-type').click();await page.keyboard.press('Control+End');await page.keyboard.press('Enter');await page.keyboard.type('/duck');await page.keyboard.press('Enter');
   await wait(3800);
   const quacks=await page.evaluate(()=>{window.__restoreMediaPlay();return{plays:window.__duckPlays,ends:window.__duckEnds};});
-  assert.equal(quacks.plays.length,3,'A duck break must play exactly three quacks');assert.ok(quacks.plays.every(p=>p.volume===1),'Duck quacks must use full playback volume');
-  for(let i=1;i<3;i++)assert.ok(quacks.plays[i].time-quacks.ends[i-1]>=220,'Quacks must have distinct pauses');
+  assert.equal(quacks.plays.length,1,'The three-quack recording must play once');assert.equal(quacks.plays[0].volume,1);assert.equal(quacks.plays[0].rate,1,'Natural calls must keep their original pitch and speed');
+  assert.equal(audio.bursts.length,3,'The recording must contain three distinct audible quacks');
+  for(let i=1;i<3;i++)assert.ok(audio.bursts[i].start-audio.bursts[i-1].end>=.25,'Recorded quacks must have clear pauses');
+  assert.equal(quacks.ends.length,1,'The full recording must finish before the popup closes');
   assert.ok(audio.peak>.45&&audio.rms>.03,'The source recording must have audible signal levels');
   assert.deepEqual(errors,[],'The figure workflow must not throw browser errors');
   console.log(JSON.stringify({result:'Figure browser checks passed',initialWidth:initial,resizedWidth:resized,right,left,narrow,printed,audio,quacks}));

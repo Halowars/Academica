@@ -9,4 +9,10 @@ Photos and sound are bundled locally. No random-image or sound service is contac
 
 The popup and sound stop after four seconds. Media never enters the manuscript or exports.
 
-- `quack-distinct-v2.mp3` (current sound): Sess8it, **Quacking Sound for Duck**, CC0 1.0. Original: https://freesound.org/people/Sess8it/sounds/532287/ . Normalized/trimmed/encoded version from SoundMonster: https://github.com/jonjonsson/SoundMonster/blob/7e07f0580aa5e40e7205b6be378787854a61f4e7/Public%20domain/quack%20duck.mp3 . The exact source is fetched and checksum-verified during the build, then served locally. Playback repeats the isolated sample exactly three times, with 280 ms gaps, at full media volume; long source clips are paced to at most 0.8 seconds per quack while preserving pitch. Muting or closing cancels the sequence.
+- `quack-distinct-v2.mp3` (legacy 0.5.8 sound): Sess8it, **Quacking Sound for Duck**, CC0 1.0. Original: https://freesound.org/people/Sess8it/sounds/532287/ . Normalized/trimmed/encoded version from SoundMonster: https://github.com/jonjonsson/SoundMonster/blob/7e07f0580aa5e40e7205b6be378787854a61f4e7/Public%20domain/quack%20duck.mp3 . Retained for older open tabs.
+
+## Current natural recording
+
+- `natural-three-quacks-v3.mp3`: cribbler, **Duck Quack**, CC0 1.0. https://freesound.org/people/cribbler/sounds/592376/
+
+Three different calls from 1.42–1.83, 2.24–2.64, and 3.20–3.51 seconds. Light 85 Hz wind/DC roll-off, 8 ms boundary fades, 420 ms pauses, and peak normalization. Original pitch and speed. The 2.2-second recording plays once; it already contains three calls.

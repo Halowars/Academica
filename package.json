@@ -1,6 +1,6 @@
 {
   "name": "academica",
-  "version": "0.5.8",
+  "version": "0.5.9",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,7 +9,10 @@
     "preview": "vite preview --host 0.0.0.0",
     "test": "node tests/run.mjs",
     "predev": "node scripts/prepare-assets.mjs",
-    "prebuild": "node scripts/prepare-assets.mjs"
+    "prebuild": "node scripts/prepare-assets.mjs",
+    "postbuild": "node scripts/write-release.mjs",
+    "deploy:firebase": "node scripts/deploy-firebase.mjs",
+    "verify:firebase": "node scripts/verify-hosting.mjs https://academica-writer.web.app/"
   },
   "dependencies": {
     "@mozilla/readability": "^0.6.0",

@@ -4,27 +4,19 @@ import {appURL} from './lib/urls';
 import {ANIMAL_BREAK_MS,animalBreaks,randomAnimalPhoto,type AnimalKind} from './lib/animal-breaks';
 
 type Celebration={kind:AnimalKind;index:number;token:number};
-let audio:HTMLAudioElement|null=null,sequence=0,playback=0;
-let replayTimer:ReturnType<typeof setTimeout>|undefined;
+let audio:HTMLAudioElement|null=null,sequence=0;
 const sounds=new Map<AnimalKind,HTMLAudioElement>(),previous=new Map<AnimalKind,number>(),preloaded=new Set<AnimalKind>();
 function muted(){try{return (localStorage.getItem('academica-break-muted')??localStorage.getItem('academica-puppy-muted'))==='true';}catch{return false;}}
 function stopAnimalSound(){
-  playback++;
-  clearTimeout(replayTimer);
-  if(audio){audio.onended=null;audio.pause();}
+  audio?.pause();
 }
 function sound(kind:AnimalKind){
   stopAnimalSound();
   let player=sounds.get(kind);
   if(!player){player=new Audio(appURL(kind+'/'+animalBreaks[kind].sound));player.preload='auto';sounds.set(kind,player);}
-  const next=player,ticket=playback;
-  audio=next;next.volume=kind==='duck'?1:.3;next.currentTime=0;
-  if(kind==='duck'){
-    let remaining=2;
-    const pace=()=>{if(ticket===playback&&Number.isFinite(next.duration)&&next.duration>0){next.preservesPitch=true;next.playbackRate=Math.max(1,next.duration/.8);}};
-    next.onloadedmetadata=pace;pace();
-    next.onended=()=>{if(ticket!==playback||remaining--<=0)return;replayTimer=setTimeout(()=>{if(ticket!==playback)return;next.currentTime=0;void next.play().catch(()=>{if(ticket===playback)window.dispatchEvent(new CustomEvent('academica-animal-sound-blocked',{detail:{token:sequence}}));});},280);};
-  }else{next.playbackRate=1;next.onloadedmetadata=null;}
+  // This recording already contains three different, naturally paced duck calls.
+  const next=player;
+  audio=next;next.volume=kind==='duck'?1:.3;next.currentTime=0;next.playbackRate=1;
   return next.play();
 }
 export function showAnimalBreak(kind:AnimalKind){

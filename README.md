@@ -1,7 +1,3 @@
-## 0.5.8 — figures on the live page
-
-Figure controls now open beside the manuscript. Width, placement, caption, and text flow update the actual paper immediately and save as you adjust. Choose **Text beside**, then left or right, to write around an image. Captions stay with their figures in Write, Read, Paper, and Word exports. On narrow screens, the controls dock below the visible page. Duck breaks play three distinct full-volume quacks.
-
 # Academica
 
 An academic writing workspace inspired by [Linea](https://github.com/Halowars/Linea). This version is a static React/Vite application published through **Firebase Hosting and GitHub Pages**, with optional **Firebase Authentication and Firestore on Spark**. It has no ChatGPT hosting or runtime dependency.
@@ -9,6 +5,12 @@ An academic writing workspace inspired by [Linea](https://github.com/Halowars/Li
 The original Linea repository is separate and unchanged.
 
 ## Use
+
+### 0.5.9 natural duck calls and verified Firebase publishing
+
+`/duck` plays three different recorded duck calls once, at their original pitch and speed, with clear pauses. The 2.2-second CC0 recording is bundled with the app. Closing or muting the break stops it immediately.
+
+`pnpm deploy:firebase` builds the current source, publishes only the Academica Hosting target, and verifies the live release revision and file hashes, including the duck recording. Each build includes `release.json` for checking which version is actually live. GitHub Pages still publishes through GitHub Actions; Firebase publication is a separate command and requires an authenticated Firebase CLI or an approved service-account credential supplied through `GOOGLE_APPLICATION_CREDENTIALS`. The GitHub release workflow also checks Firebase and fails if that site is stale, rather than showing an entirely successful release while the two hosts differ.
 
 ### 0.5.8 live figures and clearer duck breaks
 
@@ -149,10 +151,10 @@ The public repository is [Halowars/Academica](https://github.com/Halowars/Academ
 
 GitHub Pages uses **GitHub Actions**. The included workflow tests, builds, and deploys `dist/`. Relative asset paths support project pages such as `/Academica/`; no server routes are required. Firebase Hosting uses the separate `academica` target in `.firebaserc`; this maps only to `academica-writer` and prevents a deploy from overwriting the project's default Hosting site.
 
-After authenticating the Firebase CLI, deploy the built site with:
+After authenticating the Firebase CLI, build, publish, and verify Firebase with:
 
 ```sh
-npx -y firebase-tools@latest deploy --only hosting:academica --project linea-e80b7
+pnpm deploy:firebase
 ```
 
 Never commit a Firebase service-account key, login token, or manuscript backup.
