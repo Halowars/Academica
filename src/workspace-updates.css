@@ -200,3 +200,5 @@
 .figure-inspector>footer{padding:9px 14px;}
 }
 @media(pointer:coarse){.figure-inspector input:not([type=range]),.figure-inspector textarea{font-size:16px;}.figure-inspector button{min-height:40px;}.figure-inspector input[type=range]{min-height:36px;}}
+
+.academic-editor>.node-figure[data-figure-wrap=wrap]{z-index:1;}
