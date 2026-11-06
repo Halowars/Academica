@@ -5,6 +5,7 @@ import {allNodes,objectLabels,safeLink,type Paper,type RichNode} from './model';
 import {bibliographyTitle,documentFormat,sectionLabel} from './formats';
 import {installZoomGestures} from './zoom-gestures';
 import {createDocumentScaler} from './document-scaler';
+import {paragraphIndentCSS} from './paragraph-indent';
 
 export function renderNode(node:RichNode,paper:Paper,{annotations=false}:{annotations?:boolean}={}):string{
   const a=node.attrs||{},labels=objectLabels(paper),citations=formatPaper(paper),f=documentFormat(paper);
@@ -21,9 +22,9 @@ export function renderNode(node:RichNode,paper:Paper,{annotations=false}:{annota
     return long?`<blockquote ${data}>${quote} ${cite}</blockquote>`:`<span class="paper-quotation" ${data}>“${quote}” ${cite}</span>`;
   }
   if(node.type==='paragraph'){
-    const indent=a.firstIndent===null||a.firstIndent===undefined?f.indent:Math.max(0,Math.min(1.5,Number(a.firstIndent)));
-    let result='',line='';const children=node.content||[];for(let i=0;i<children.length;i++){const child=children[i],mark=child.marks?.find(m=>m.type==='quoted');if(paper.style==='apa'&&mark&&String(child.text||'').trim().split(/\s+/).length>=40){if(line.trim())result+=`<p style="text-indent:${indent}in">${line}</p>`;line='';let cite='';const next=children[i+1]?.type==='citation'?i+1:children[i+2]?.type==='citation'&&children[i+1]?.text?.trim()===''?i+2:-1;if(next>=0&&children[next].attrs?.id===mark.attrs?.citationId){cite=' '+renderNode(children[next],paper,{annotations});i=next;}result+=`<blockquote>${e(String(child.text||'').replace(/^[“\"]|[”\"]$/g,''))}${cite}</blockquote>`;continue;}if(child.type==='quotation'&&paper.style==='apa'&&String(child.attrs?.text||'').trim().split(/\s+/).length>=40){if(line.trim())result+=`<p style="text-indent:${indent}in">${line}</p>`;line='';result+=renderNode(child,paper,{annotations});}else line+=renderNode(child,paper,{annotations});}
-    return result+(line.trim()||!result?`<p style="text-indent:${indent}in">${line||'<br>'}</p>`:'');
+    const indentStyle=paragraphIndentCSS(a,f.indent);
+    let result='',line='';const children=node.content||[];for(let i=0;i<children.length;i++){const child=children[i],mark=child.marks?.find(m=>m.type==='quoted');if(paper.style==='apa'&&mark&&String(child.text||'').trim().split(/\s+/).length>=40){if(line.trim())result+=`<p style="${indentStyle}">${line}</p>`;line='';let cite='';const next=children[i+1]?.type==='citation'?i+1:children[i+2]?.type==='citation'&&children[i+1]?.text?.trim()===''?i+2:-1;if(next>=0&&children[next].attrs?.id===mark.attrs?.citationId){cite=' '+renderNode(children[next],paper,{annotations});i=next;}result+=`<blockquote>${e(String(child.text||'').replace(/^[“\"]|[”\"]$/g,''))}${cite}</blockquote>`;continue;}if(child.type==='quotation'&&paper.style==='apa'&&String(child.attrs?.text||'').trim().split(/\s+/).length>=40){if(line.trim())result+=`<p style="${indentStyle}">${line}</p>`;line='';result+=renderNode(child,paper,{annotations});}else line+=renderNode(child,paper,{annotations});}
+    return result+(line.trim()||!result?`<p style="${indentStyle}">${line||'<br>'}</p>`:'');
   }
   if(node.type==='pageBreak')return`<div class="explicit-break" data-break="${e(a.breakKind||'page')}"></div>`;
   if(node.type==='footnote'){const index=allNodes(paper,'footnote').findIndex(n=>n.attrs?.id===a.id)+1;return`<span class="scholar-footnote" data-note-number="${index}">${e(a.text)}</span>`;}

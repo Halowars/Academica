@@ -1,6 +1,6 @@
 {
   "name": "academica",
-  "version": "0.5.5",
+  "version": "0.5.6",
   "private": true,
   "type": "module",
   "scripts": {
@@ -26,6 +26,7 @@
     "dompurify": "^3.4.17",
     "fflate": "0.8.2",
     "firebase": "^13.2.0",
+    "harper.js": "2.13.0",
     "idb": "^8.0.4",
     "katex": "^0.19.1",
     "lucide-react": "^1.31.0",

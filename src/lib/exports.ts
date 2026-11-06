@@ -1,6 +1,7 @@
-import { uid,validatePaper,allNodes,objectLabels,type Paper,type RichNode,type Source } from './model';
+import { uid,validatePaper,allNodes,objectLabels,safeLink,type Paper,type RichNode,type Source } from './model';
 import { formatPaper } from './citations';
 import {documentFormat,sectionLabel,bibliographyTitle} from './formats';
+import {paragraphIndent} from './paragraph-indent';
 
 function fileName(title:string){return title.replace(/[^\p{L}\p{N} ._-]/gu,'').trim().slice(0,100)||'Academica paper';}
 function download(blob:Blob,name:string){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),10000);}
@@ -52,14 +53,14 @@ export async function exportWord(paper:Paper){
     if(node.type==='crossref')return[run(labels[node.attrs?.targetId]||'reference needed')];
     if(node.type==='hardBreak')return[new D.TextRun({break:1})];
     if(node.type==='footnote')return[new D.FootnoteReferenceRun(footnoteIds.get(node.attrs?.id)||1)];
-    if(node.type==='text'){const options={bold:node.marks?.some(m=>m.type==='bold'),italics:node.marks?.some(m=>m.type==='italic'),strike:node.marks?.some(m=>m.type==='strike'),underline:node.marks?.some(m=>m.type==='underline')?{}:undefined};return(node.text||'').split('\t').flatMap((part,i)=>i?[new D.TextRun({children:[new D.Tab()]}),run(part,options)]:[run(part,options)]);}
+    if(node.type==='text'){const options={bold:node.marks?.some(m=>m.type==='bold'),italics:node.marks?.some(m=>m.type==='italic'),strike:node.marks?.some(m=>m.type==='strike'),underline:node.marks?.some(m=>m.type==='underline')?{}:undefined},runs=(node.text||'').split('\t').flatMap((part,i)=>i?[new D.TextRun({children:[new D.Tab()]}),run(part,options)]:[run(part,options)]),href=safeLink(node.marks?.find(m=>m.type==='link')?.attrs?.href||'');return href?[new D.ExternalHyperlink({link:href,children:runs})]:runs;}
     return node.content?.flatMap(inline)||[];
   };
   const paragraph=(children:any[],options:any={})=>new D.Paragraph({children,spacing:{before:0,after:f.paragraphAfter*20,line:f.lineHeight*240},indent:{firstLine:f.indent*1440},...options});
   const blocks=async(node:RichNode):Promise<any[]>=>{
     if(node.type==='doc'||node.type==='listItem'){const results=[];for(const child of node.content||[])results.push(...await blocks(child));return results;}
     if(node.type==='paragraph'){
-      const options=node.attrs?.firstIndent===null||node.attrs?.firstIndent===undefined?{}:{indent:{firstLine:Number(node.attrs.firstIndent)*1440}};
+      const indent=paragraphIndent(node.attrs,f.indent),options={indent:indent.hanging?{left:indent.left*1440,hanging:indent.hanging*1440}:{firstLine:indent.firstLine*1440}};
       const result:any[]=[];let line:any[]=[];for(const child of node.content||[]){if(paper.style==='apa'&&child.type==='quotation'&&String(child.attrs?.text||'').trim().split(/\s+/).length>=40){if(line.length)result.push(paragraph(line,options));line=[];result.push(paragraph([run(child.attrs?.text+' '+plain(citations.inline[child.attrs?.id]||'(source needed)'))],{indent:{left:720,firstLine:0}}));}else line.push(...inline(child));}if(line.length||!result.length)result.push(paragraph(line,options));return result;
     }
     if(node.type==='heading')return[paragraph(inline(node).map(r=>r),{heading:D.HeadingLevel.HEADING_2,keepNext:true,indent:{firstLine:0}})];

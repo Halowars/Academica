@@ -13,7 +13,8 @@ export default function SlashCommandMenu({editor,actions}:{editor:Editor|null;ac
   activeRef.current=active;
 
   useEffect(()=>{
-    if(!editor)return;
+    if(!editor||editor.isDestroyed)return;
+    const dom=editor.view.dom;
     function update(){
       if(editor!.isDestroyed||!editor!.isEditable){setMenu(null);return;}
       const match=slashCommandMatch(editor!.state),commands=match?filterSlashCommands(match.query):[];
@@ -27,7 +28,7 @@ export default function SlashCommandMenu({editor,actions}:{editor:Editor|null;ac
       setMenu({match,commands,left,top:above?coords.top-8:coords.bottom+8,above,signature});
     }
     function closeAfterBlur(){requestAnimationFrame(()=>{if(!interacting.current&&!root.current?.contains(document.activeElement))setMenu(null);});}
-    function outside(event:PointerEvent){const target=event.target as Node;if(!root.current?.contains(target)&&!editor!.view.dom.contains(target))setMenu(null);}
+    function outside(event:PointerEvent){const target=event.target as Node;if(!root.current?.contains(target)&&!dom.contains(target))setMenu(null);}
     editor.on('transaction',update);editor.on('selectionUpdate',update);editor.on('focus',update);editor.on('blur',closeAfterBlur);
     window.addEventListener('resize',update);window.addEventListener('scroll',update,true);document.addEventListener('pointerdown',outside,true);
     update();
@@ -42,7 +43,8 @@ export default function SlashCommandMenu({editor,actions}:{editor:Editor|null;ac
   }
 
   useEffect(()=>{
-    if(!editor)return;
+    if(!editor||editor.isDestroyed)return;
+    const dom=editor.view.dom;
     function keydown(event:KeyboardEvent){
       if(event.isComposing)return;
       const match=slashCommandMatch(editor!.state),commands=match?filterSlashCommands(match.query):[];
@@ -59,8 +61,8 @@ export default function SlashCommandMenu({editor,actions}:{editor:Editor|null;ac
         event.preventDefault();event.stopPropagation();dismissed.current=`${match.from}:${match.to}:${match.query}`;setMenu(null);
       }
     }
-    editor.view.dom.addEventListener('keydown',keydown,true);
-    return()=>editor.view.dom.removeEventListener('keydown',keydown,true);
+    dom.addEventListener('keydown',keydown,true);
+    return()=>dom.removeEventListener('keydown',keydown,true);
   },[editor,menu]);
 
   useEffect(()=>{root.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.scrollIntoView({block:'nearest'});},[active]);

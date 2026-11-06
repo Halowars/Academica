@@ -2,6 +2,8 @@ import type {EditorState} from '@tiptap/pm/state';
 
 export const slashCommands=[
   {name:'cite',label:'Citation',description:'Cite a source or verify nearby quoted text'},
+  {name:'link',label:'Link',description:'Add a web address with your own display text'},
+  {name:'hanging',label:'Hanging indent',description:'Format this paragraph with a half-inch hanging indent'},
   {name:'evidence',label:'Evidence',description:'Connect this writing to a saved source passage'},
   {name:'note',label:'Passage note',description:'Attach a private note to this exact place'},
   {name:'todo',label:'Checklist',description:'Attach a small checklist to this exact place'},
@@ -13,6 +15,7 @@ export const slashCommands=[
   {name:'figure',label:'Figure',description:'Insert an image with a caption'},
   {name:'table',label:'Table',description:'Insert a table with a caption'},
   {name:'equation',label:'Equation',description:'Insert a numbered equation'},
+  {name:'puppy',label:'Puppy break',description:'A puppy, confetti, and a little woof for four seconds'},
 ] as const;
 
 export type SlashCommandName=(typeof slashCommands)[number]['name'];

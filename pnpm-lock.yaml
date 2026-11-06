@@ -50,6 +50,9 @@ importers:
       firebase:
         specifier: ^13.2.0
         version: 13.2.0(@types/react@19.2.14)(react@19.2.6)
+      harper.js:
+        specifier: 2.13.0
+        version: 2.13.0
       idb:
         specifier: ^8.0.4
         version: 8.0.4
@@ -1299,6 +1302,9 @@ packages:
   happy-dom@21.0.4:
     resolution: {integrity: sha512-tFm+GaLBgo6o0awHnvHaNoraVo27qJ+2tZEtZ+cIa08hXbeitrxAJajLI05hsUy/2/YTKcUjQYzHe5mCcraLBw==}
     engines: {node: '>=20.0.0'}
+
+  harper.js@2.13.0:
+    resolution: {integrity: sha512-kUj+WLx8NSEVxQMoRqoBHGAPECAkATS9eCyYfQHWp1rEcOxtDkSKgjV+N0VHPd5xYKIF6cufJ7+evwaHfRF3WA==}
 
   http-parser-js@0.5.10:
     resolution: {integrity: sha512-Pysuw9XpUq5dVc/2SMHpuTY01RFl8fttgcyunjL7eEMhGM3cI4eOmiCycJDVCo/7O7ClfQD3SaI6ftDzqOXYMA==}
@@ -2984,6 +2990,10 @@ snapshots:
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
+
+  harper.js@2.13.0:
+    dependencies:
+      fflate: 0.8.2
 
   http-parser-js@0.5.10: {}
 
