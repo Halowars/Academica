@@ -6,11 +6,19 @@ The original Linea repository is separate and unchanged.
 
 ## Use
 
+### 0.5.2 workspace update
+
+The outline keeps its saved open/closed state while resizing. At desktop and iPad split widths of 480 pixels or more it stays beside the document; below that it remains an explicitly controlled drawer. Drag a section's small grip, use its organization menu, or focus the grip and press Up/Down to change **sidebar order only**. Original section numbers, manuscript order, contents, cross-references, and exports are unchanged. The arrangement is remembered per paper in this browser.
+
+Use two fingers to pinch the document, or the percentage control in the bottom-right corner, to zoom from 25% to 500%. The popup includes a slider, presets, and Fit page width. Zoom is shared by Write, Read, bibliography, and Paper views, and does not change font size, pagination, submission formatting, or toolbar size. A pinch keeps the document point under your fingers in view. Touch input and native iPad Safari still need physical-device verification; responsive browser layouts and the shared gesture logic are checked here.
+
+Spelling suggestions include **Ignore in this paper**, remembered for the current paper, and **Add to my dictionary**, remembered across papers in this browser. Learned terms become correction suggestions. A completed misspelling is corrected automatically only when it is unknown to the English dictionary and uniquely close to a learned specialist term; short or ambiguous matches stay manual. Undo restores the original spelling and prevents that correction being repeated in the current editor session. Exact verified source quotations remain protected from spelling corrections. No spelling text leaves the browser.
+
 ### 0.5 research and layout update
 
 Write mode now shows physical sheets with automatic gaps within paragraphs, page numbers, and a Fit width / writing zoom control. The document remains continuous for selection, undo, and editing. Tab sets a first-line paragraph indent or inserts a real tab in running text; Shift+Tab removes paragraph indentation. Lists and tables retain their own Tab navigation. Escape releases keyboard focus from the editor.
 
-Paper → Format opens a document inspector for fonts, size, line spacing, margins, paper size, indentation, headers, numbering, contents, and figure/table lists. Workspace appearance remains separate. Profiles describe defaults and custom differences, not a promise to satisfy every institution or journal. At narrow/iPad split widths the outline is a drawer and the inspector is a bottom sheet; pages scale without changing their physical dimensions. Native Safari/iPad hardware QA remains pending.
+Paper → Format opens a document inspector for fonts, size, line spacing, margins, paper size, indentation, headers, numbering, contents, and figure/table lists. Workspace appearance remains separate. Profiles describe defaults and custom differences, not a promise to satisfy every institution or journal. At narrow/iPad split widths the inspector is a bottom sheet; pages scale without changing their physical dimensions. Native Safari/iPad hardware QA remains pending.
 
 The six CSL profiles are APA 7, MLA 9, Chicago 18 author–date, IEEE, NLM/Vancouver, and AMA 11. Document outlines include essays, research papers, reviews, technical/lab reports, conference papers, theses, and dissertations. Section settings provide roles and reordering. More advanced university-specific rules remain tracked in [ROADMAP.md](ROADMAP.md).
 

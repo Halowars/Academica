@@ -6,7 +6,7 @@ import {mergeReaderText,readerError} from './lib/article-text';
 import {matchQuotation,passageLocation,quotationOccurrences} from './lib/quote-match';
 import {safeLink,sourceLabel,uid,type LocatorType,type Paper,type Passage,type Source} from './lib/model';
 export type ReaderFocus={sourceId:string;text:string;passageId?:string;token:number};
-type Props={paper:Paper;sourceId:string;focus?:ReaderFocus|null;onSelect:(id:string)=>void;onSources:()=>void;onImportText:(source:Source)=>void;onQuote:(source:Source,text:string,passageId:string,locator:string,locatorType:LocatorType)=>void;notify:(text:string)=>void};
+type Props={paper:Paper;sourceId?:string;focus?:ReaderFocus|null;onSelect:(id:string)=>void;onSources:()=>void;onImportText:(source:Source)=>void;onQuote:(source:Source,text:string,passageId:string,locator:string,locatorType:LocatorType)=>void;notify:(text:string)=>void};
 // Writing updates do not redraw hundreds of article paragraphs. Callback proxies
 // still call the latest workspace handlers without capturing an old draft.
 export default function SourceReader(props:Props){
@@ -19,9 +19,9 @@ const ReaderContent=memo(function ReaderContent({paper,sourceId,focus,onSelect,o
   const source=paper.sources.find(s=>s.id===sourceId),reader=useRef<HTMLDivElement>(null),pdfInput=useRef<HTMLInputElement>(null),menu=useRef<HTMLDetailsElement>(null),handled=useRef(0),mounted=useRef(true);
   const [loading,setLoading]=useState(false),[refresh,setRefresh]=useState({id:'',token:0}),[error,setError]=useState(''),[selection,setSelection]=useState<{text:string;passageId:string;locator:string;locatorType:LocatorType}|null>(null);
   const [view,setView]=useState<'article'|'saved'>('article'),[find,setFind]=useState(''),[occurrence,setOccurrence]=useState(0),[localFocus,setLocalFocus]=useState('');
-  const target=focus?.sourceId===sourceId?focus.text:localFocus;
+  const target=focus&&focus.sourceId===sourceId?focus.text:localFocus;
   const hits=useMemo(()=>source?quotationOccurrences(source,find||target):[],[source?.passages,find,target]),hit=hits[occurrence]||hits[0];
-  useEffect(()=>{setView('article');setFind('');setLocalFocus('');const matches=source&&focus?.sourceId===sourceId?quotationOccurrences(source,focus.text):[];setOccurrence(Math.max(0,matches.findIndex(h=>h.passageId===focus?.passageId)));},[focus?.token,sourceId]);
+  useEffect(()=>{setView('article');setFind('');setLocalFocus('');const matches=source&&focus&&focus.sourceId===sourceId?quotationOccurrences(source,focus.text):[];setOccurrence(Math.max(0,matches.findIndex(h=>h.passageId===focus?.passageId)));},[focus?.token,sourceId]);
   useEffect(()=>{if(!hit||view!=='article')return;const mark=reader.current?.querySelector('mark.reader-match');if(mark){const root=reader.current!;root.scrollTo({top:root.scrollTop+mark.getBoundingClientRect().top-root.getBoundingClientRect().top-45,behavior:'smooth'});}},[target,find,occurrence,view,source?.passages]);
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
   useEffect(()=>{function outside(event:PointerEvent){if(!menu.current?.contains(event.target as Node))menu.current?.removeAttribute('open');}document.addEventListener('pointerdown',outside);return()=>document.removeEventListener('pointerdown',outside);},[]);
@@ -35,7 +35,7 @@ const ReaderContent=memo(function ReaderContent({paper,sourceId,focus,onSelect,o
       if(!active||useWorkspace.getState().paper?.id!==paperId)return;const message=readerError(cause);setError(message);useWorkspace.getState().edit(p=>{const current=p.sources.find(s=>s.id===id);if(current&&!current.passages.length){current.textStatus='unavailable';current.textAttemptVersion=2;current.textMessage=message;}});
     }).finally(()=>{if(active)setLoading(false);});return()=>{active=false;};
   },[paper.id,sourceId,refresh]);
-  function retry(){setRefresh(current=>({id:sourceId,token:current.token+1}));}
+  function retry(){if(sourceId)setRefresh(current=>({id:sourceId,token:current.token+1}));}
   function closeMenu(){menu.current?.removeAttribute('open');}
   async function attachPDF(file:File){
     if(!source)return;setLoading(true);setError('');const id=source.id,paperId=paper.id;

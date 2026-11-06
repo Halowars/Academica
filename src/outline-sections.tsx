@@ -1,0 +1,23 @@
+import {useEffect,useRef,useState,type PointerEvent as ReactPointerEvent} from 'react';
+import {GripVertical,ArrowDown,ArrowUp,RotateCcw} from 'lucide-react';
+import type {Paper} from './lib/model';
+import {moveOutlineItem,orderedOutline} from './lib/workspace-preferences';
+
+function savedOrder(paperId:string){try{return JSON.parse(localStorage.getItem('academica-outline-order:'+paperId)||'[]');}catch{return [];}}
+
+export default function OutlineSections({paper,panel,onChoose}:{paper:Paper;panel:string;onChoose:(id:string)=>void}){
+  const [order,setOrder]=useState<string[]>(()=>savedOrder(paper.id)),[moving,setMoving]=useState<string|null>(null),[announcement,setAnnouncement]=useState(''),root=useRef<HTMLDivElement>(null);
+  const drag=useRef<{id:string;pointer:number;startY:number;active:boolean}|null>(null),orderRef=useRef(order);
+  const sections=orderedOutline(paper.sections,order);orderRef.current=sections.map(section=>section.id);
+  useEffect(()=>{try{localStorage.setItem('academica-outline-order:'+paper.id,JSON.stringify(order));}catch{}},[paper.id,order]);
+  function move(id:string,target:string){setOrder(moveOutlineItem(orderRef.current,id,target));}
+  function start(event:ReactPointerEvent<HTMLButtonElement>,id:string){if(event.button!==0)return;event.preventDefault();event.currentTarget.focus();event.currentTarget.setPointerCapture(event.pointerId);drag.current={id,pointer:event.pointerId,startY:event.clientY,active:false};}
+  function pointerMove(event:ReactPointerEvent<HTMLButtonElement>){const current=drag.current;if(!current||current.pointer!==event.pointerId)return;if(!current.active&&Math.abs(event.clientY-current.startY)<5)return;current.active=true;setMoving(current.id);const rows=[...(root.current?.querySelectorAll<HTMLElement>('[data-outline-section]')||[])];const target=rows.find(row=>{const rect=row.getBoundingClientRect();return event.clientY>=rect.top&&event.clientY<=rect.bottom;});if(target)move(current.id,target.dataset.outlineSection!);const container=root.current?.closest<HTMLElement>('.outline');if(container){const bounds=container.getBoundingClientRect();if(event.clientY<bounds.top+65)container.scrollTop-=12;else if(event.clientY>bounds.bottom-45)container.scrollTop+=12;}}
+  function finish(){const current=drag.current;if(current?.active)setAnnouncement('Sidebar order saved. Manuscript order unchanged.');drag.current=null;setMoving(null);}
+  function nudge(id:string,direction:number){const ids=orderRef.current,index=ids.indexOf(id),target=ids[index+direction];if(target){move(id,target);setAnnouncement(`Moved ${paper.sections.find(section=>section.id===id)?.title} ${direction<0?'up':'down'} in the sidebar.`);}}
+  return <><div className="section-links sortable-sections" ref={root}>{sections.map(section=><div key={section.id} data-outline-section={section.id} className={'outline-section-row '+(panel===section.id?'active ':'')+(moving===section.id?'moving':'')}>
+    <button className="outline-section-grip" aria-label={'Reorder '+section.title+' in sidebar'} title="Drag to organize sidebar. Use ↑ and ↓ with the keyboard." onPointerDown={event=>start(event,section.id)} onPointerMove={pointerMove} onPointerUp={finish} onPointerCancel={finish} onLostPointerCapture={finish} onKeyDown={event=>{if(event.key==='ArrowUp'||event.key==='ArrowDown'){event.preventDefault();nudge(section.id,event.key==='ArrowUp'?-1:1);}if(event.key==='Home'){event.preventDefault();move(section.id,orderRef.current[0]);}if(event.key==='End'){event.preventDefault();move(section.id,orderRef.current.at(-1)!);}}}><GripVertical size={12}/></button>
+    <button className={panel===section.id?'section-link active':'section-link'} onClick={()=>onChoose(section.id)}><span>{String(paper.sections.findIndex(s=>s.id===section.id)+1).padStart(2,'0')}</span><span>{section.title}</span></button>
+    <details className="outline-section-menu"><summary aria-label={'Organize '+section.title}><GripVertical size={12}/></summary><div><button disabled={sections[0].id===section.id} onClick={event=>{nudge(section.id,-1);event.currentTarget.closest('details')?.removeAttribute('open');}}><ArrowUp size={12}/>Move up</button><button disabled={sections.at(-1)?.id===section.id} onClick={event=>{nudge(section.id,1);event.currentTarget.closest('details')?.removeAttribute('open');}}><ArrowDown size={12}/>Move down</button><button onClick={()=>{setOrder([]);setAnnouncement('Sidebar reset to manuscript order.');root.current?.querySelectorAll('details').forEach(node=>node.removeAttribute('open'));}}><RotateCcw size={12}/>Manuscript order</button></div></details>
+  </div>)}</div><span className="sr-only" role="status">{announcement}</span></>;
+}

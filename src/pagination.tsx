@@ -10,6 +10,7 @@ import PaperEditor from './paper-editor';
 import type {AcademicActions} from './editor-extensions';
 import type {SpellingSelection} from './spelling';
 import {MoreHorizontal} from 'lucide-react';
+import {useDocumentZoom,type ZoomProps} from './document-zoom';
 
 const key=new PluginKey<DecorationSet>('academic-page-flow');
 export const editorRegistry=new Map<string,Editor>();
@@ -26,10 +27,10 @@ function firstPositionAtLine(editor:Editor,element:HTMLElement,top:number,fallba
   }
   const found=editor.view.posAtCoords({left:element.getBoundingClientRect().left+1,top:top+3});return found?.pos??fallback;
 }
-export default function PaginatedWriter({paper,sections,actions,onSpelling,onEditSection,onEditSource,onCount}:{paper:Paper;sections:Section[];actions:AcademicActions;onSpelling:(s:SpellingSelection)=>void;onEditSection:(s:Section)=>void;onEditSource:(id:string)=>void;onCount:(count:number)=>void}){
-  const root=useRef<HTMLDivElement>(null),wrap=useRef<HTMLDivElement>(null),[scale,setScale]=useState(1),[writingZoom,setWritingZoom]=useState('fit'),[pages,setPages]=useState(1),[active,setActive]=useState(1),f=documentFormat(paper),dimensions=pageDimensions(f),gap=28,stride=dimensions.height+gap;
+export default function PaginatedWriter({paper,sections,actions,onSpelling,onEditSection,onEditSource,onCount,...zoomProps}:{paper:Paper;sections:Section[];actions:AcademicActions;onSpelling:(s:SpellingSelection)=>void;onEditSection:(s:Section)=>void;onEditSource:(id:string)=>void;onCount:(count:number)=>void}&ZoomProps){
+  const root=useRef<HTMLDivElement>(null),wrap=useRef<HTMLDivElement>(null),[pages,setPages]=useState(1),[active,setActive]=useState(1),f=documentFormat(paper),dimensions=pageDimensions(f),gap=28,stride=dimensions.height+gap;
+  const scale=useDocumentZoom(wrap,root,dimensions.width,zoomProps);
   const signature=JSON.stringify(f),lastScroll=useRef(0);
-  useEffect(()=>{if(!wrap.current)return;const observer=new ResizeObserver(()=>setScale(writingZoom==='fit'?Math.min(1,(wrap.current!.clientWidth-28)/dimensions.width):Number(writingZoom)));observer.observe(wrap.current);return()=>observer.disconnect();},[dimensions.width,writingZoom]);
   useEffect(()=>{
     let cancelled=false,frame=0;const timer=setTimeout(()=>{frame=requestAnimationFrame(()=>{const el=root.current;if(cancelled||!el)return;
       const editors=sections.map(s=>editorRegistry.get(s.id)).filter((e):e is Editor=>!!e&&!e.isDestroyed);
@@ -40,7 +41,7 @@ export default function PaginatedWriter({paper,sections,actions,onSpelling,onEdi
       // temporarily collapsed manuscript made every pause in typing jump.
       for(const editor of editors)if(key.getState(editor.state)?.find().length)editor.view.dispatch(editor.state.tr.setMeta(key,[]).setMeta('addToHistory',false));
       el.querySelectorAll<HTMLElement>('[data-flow-external]').forEach(n=>n.style.paddingTop='0px');
-      const base=el.getBoundingClientRect().top,candidates:Candidate[]=[],z=scale||1;
+      const base=el.getBoundingClientRect().top,candidates:Candidate[]=[],z=Number(el.style.zoom)||1;
         for(const element of el.querySelectorAll<HTMLElement>('[data-flow-external]')){const r=element.getBoundingClientRect();candidates.push({top:(r.top-base)/z,bottom:(r.bottom-base)/z,external:element,forced:element.dataset.flowBreak==='true'});}
         for(const editor of editors)editor.state.doc.descendants((node,pos)=>{
           if(node.type.name==='table'||node.type.name==='figure'||node.type.name==='equation'||node.type.name==='pageBreak'){const element=editor.view.nodeDOM(pos) as HTMLElement|null;if(!element?.getBoundingClientRect)return false;const r=element.getBoundingClientRect();candidates.push({top:(r.top-base)/z,bottom:(r.bottom-base)/z,editor,pos,forced:node.type.name==='pageBreak'});return false;}
@@ -63,11 +64,11 @@ export default function PaginatedWriter({paper,sections,actions,onSpelling,onEdi
         const total=Math.max(1,page+1);setPages(total);onCount(total);
       });
     },160);return()=>{cancelled=true;clearTimeout(timer);cancelAnimationFrame(frame);};
-  },[paper.updatedAt,sections.map(s=>s.id).join(','),signature,scale]);
+  },[paper.updatedAt,sections.map(s=>s.id).join(','),signature]);
   useEffect(()=>{const scroll=wrap.current?.closest('.page-scroll');if(!scroll)return;function update(){if(!root.current)return;const relative=(scroll!.getBoundingClientRect().top-root.current.getBoundingClientRect().top)/(scale||1);setActive(Math.min(pages,Math.max(1,Math.floor((relative+dimensions.height*.35)/stride)+1)));lastScroll.current=scroll!.scrollTop;}scroll.addEventListener('scroll',update,{passive:true});return()=>scroll.removeEventListener('scroll',update);},[scale,pages,stride]);
   const refs=formatPaper(paper).bibliography,full=sections.length===paper.sections.length,firstBody=sections.findIndex(s=>!['abstract','acknowledgments'].includes(s.kind||''));
   const style={'--sheet-width':dimensions.width+'px','--sheet-height':dimensions.height+'px','--sheet-stride':stride+'px','--page-margin':f.margin*96+'px','--doc-font':`"${f.font}",serif`,'--doc-size':f.size*96/72+'px','--doc-line':f.lineHeight,'--doc-indent':f.indent*96+'px','--doc-after':f.paragraphAfter*96/72+'px',zoom:scale,minHeight:pages*stride-gap} as CSSProperties;
-  return <div className="paged-writer-wrap" ref={wrap}><div className="live-page-status"><span>{paper.kind==='dissertation'?'Dissertation':'Manuscript'}</span><div><select aria-label="Writing zoom" value={writingZoom} onChange={e=>setWritingZoom(e.target.value)}><option value="fit">Fit width</option><option value="0.85">85%</option><option value="1">100%</option><option value="1.15">115%</option></select><span>Page {active} of {pages}</span></div></div><div className="paged-writer" ref={root} style={style}><div className="sheet-backgrounds" aria-hidden="true">{Array.from({length:pages},(_,i)=><div className="writer-sheet" key={i} style={{top:i*stride,height:dimensions.height}}><span className={'writer-page-number '+f.pagePosition}>{paper.style==='mla'?(paper.author.trim().split(/\s+/).at(-1)||'')+' ':''}{i+1}</span></div>)}</div><div className="flowing-manuscript">
+  return <div className="paged-writer-wrap" ref={wrap}><div className="live-page-status"><span>{paper.kind==='dissertation'?'Dissertation':'Manuscript'}</span><span>Page {active} of {pages}</span></div><div className="paged-writer" ref={root} style={style}><div className="sheet-backgrounds" aria-hidden="true">{Array.from({length:pages},(_,i)=><div className="writer-sheet" key={i} style={{top:i*stride,height:dimensions.height}}><span className={'writer-page-number '+f.pagePosition}>{paper.style==='mla'?(paper.author.trim().split(/\s+/).at(-1)||'')+' ':''}{i+1}</span></div>)}</div><div className="flowing-manuscript">
     {full&&f.titlePage&&<div className="writer-title-page"><h1>{paper.title}</h1>{[paper.author,paper.institution,paper.course,paper.instructor,paper.date?new Date(paper.date+'T12:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}):''].filter(Boolean).map((t,i)=><p key={i}>{t}</p>)}</div>}
     {sections.map((section,index)=><section className="flow-section" key={section.id} data-section-role={section.kind||'body'} id={'object-'+section.id}>{index===firstBody&&<>{full&&<FrontLists paper={paper}/>}<div data-flow-external data-flow-break={index>0||full&&(f.titlePage||f.contents||f.listFigures||f.listTables)?'true':undefined}><h1 className="writer-body-title">{paper.title}</h1></div></>}<div data-flow-external data-flow-break={index!==firstBody&&(['abstract','acknowledgments'].includes(section.kind||'')||index===0&&full&&f.titlePage||['thesis','dissertation'].includes(paper.kind))?'true':undefined} className="flow-section-heading">{!(paper.style==='apa'&&index===firstBody&&/^introduction$/i.test(section.title.trim()))&&<h2>{sectionLabel(paper,paper.sections.indexOf(section))}</h2>}<button className="icon-button" title="Edit section" aria-label={'Edit '+section.title+' section'} onClick={()=>onEditSection(section)}><MoreHorizontal size={16}/></button></div><PaperEditor section={section} actions={actions} onSpelling={onSpelling}/></section>)}
     {full&&refs.length>0&&<section className="flow-bibliography"><div data-flow-external data-flow-break="true"><h2>{paper.style==='mla'?'Works Cited':'References'}</h2></div>{refs.map(r=><div key={r.sourceId} data-flow-external className="flow-reference"><div dangerouslySetInnerHTML={{__html:DOMPurify.sanitize(r.html)}}/><button className="icon-button" aria-label="Edit reference" onClick={()=>onEditSource(r.sourceId)}><MoreHorizontal size={14}/></button></div>)}</section>}
