@@ -1,7 +1,7 @@
 name: Build and deploy GitHub Pages
 on:
   push:
-    branches: [main]
+    branches: [main, codex/figure-live-preview]
   workflow_dispatch:
 permissions:
   contents: read
