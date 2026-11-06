@@ -78,4 +78,8 @@ try{
   assert.ok(audio.peak>.45&&audio.rms>.03,'The source recording must have audible signal levels');
   assert.deepEqual(errors,[],'The figure workflow must not throw browser errors');
   console.log(JSON.stringify({result:'Figure browser checks passed',initialWidth:initial,resizedWidth:resized,right,left,narrow,audio,quacks}));
+}catch(error){
+  console.error('Browser diagnostics:',JSON.stringify({errors,state:await page.evaluate(()=>({body:document.body.innerText.slice(0,7000),editors:[...document.querySelectorAll('.academic-editor')].map(e=>({section:e.getAttribute('data-section-id'),text:e.textContent.slice(0,120)}))})).catch(()=>null)}));
+  await mkdir('work/figure-proof',{recursive:true});await page.screenshot({path:'work/figure-proof/failure.png',fullPage:true}).catch(()=>{});
+  throw error;
 }finally{await browser.close();}
