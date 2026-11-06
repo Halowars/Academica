@@ -6,6 +6,10 @@ The original Linea repository is separate and unchanged.
 
 ## Use
 
+### 0.5.3 section navigation
+
+Section rows put their organization menu on the left and drag grip on the right. Opening an individual section shows its name above the page (without the sidebar number) and its heading in the writing area. Focused Write, Read, and Paper views contain just that section, without unrelated cover pages or bibliography. Original manuscript numbering is preserved where enabled by the document format. APA's introduction has an editor-only margin label in the full manuscript, so its name and edit menu stay visible without adding an extra line to the submitted layout. Printing/PDF export returns to the full manuscript before printing.
+
 ### 0.5.2 workspace update
 
 The outline keeps its saved open/closed state while resizing. At desktop and iPad split widths of 480 pixels or more it stays beside the document; below that it remains an explicitly controlled drawer. Drag a section's small grip, use its organization menu, or focus the grip and press Up/Down to change **sidebar order only**. Original section numbers, manuscript order, contents, cross-references, and exports are unchanged. The arrangement is remembered per paper in this browser.
