@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
 const {chromium}=await import(process.env.ACADEMICA_PLAYWRIGHT||'playwright');
-const browser=await chromium.launch({headless:true});
+const browser=await chromium.launch({headless:true,args:['--autoplay-policy=no-user-gesture-required']});
 const page=await browser.newPage({viewport:{width:1440,height:1000}});
 const errors=[];page.on('pageerror',error=>errors.push(error.message));
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -56,6 +56,26 @@ try{
   await page.getByRole('button',{name:'Edit figure',exact:true}).click({force:true});await tools.waitFor();
   assert.equal(await slider.inputValue(),'35');assert.equal(await page.getByRole('button',{name:'Text beside',exact:true}).getAttribute('aria-pressed'),'true');
   await page.getByRole('button',{name:'Done',exact:true}).click();
+  const audio=await page.evaluate(async()=>{
+    window.__duckPlays=[];window.__duckEnds=[];
+    const watched=new WeakSet(),original=HTMLMediaElement.prototype.play;window.__restoreMediaPlay=()=>HTMLMediaElement.prototype.play=original;
+    HTMLMediaElement.prototype.play=function(){
+      if(this.src.includes('/duck/quack-distinct-v2.mp3')){
+        window.__duckPlays.push({time:performance.now(),volume:this.volume});
+        if(!watched.has(this)){watched.add(this);this.addEventListener('ended',()=>window.__duckEnds.push(performance.now()));}
+      }
+      return original.apply(this,arguments);
+    };
+    const context=new AudioContext(),buffer=await context.decodeAudioData(await(await fetch('/duck/quack-distinct-v2.mp3')).arrayBuffer()),samples=buffer.getChannelData(0);
+    let peak=0,power=0;for(const value of samples){peak=Math.max(peak,Math.abs(value));power+=value*value;}await context.close();
+    const {showAnimalBreak}=await import('/src/animal-break.tsx');showAnimalBreak('duck');
+    return{duration:buffer.duration,peak,rms:Math.sqrt(power/samples.length)};
+  });
+  await wait(3800);
+  const quacks=await page.evaluate(()=>{window.__restoreMediaPlay();return{plays:window.__duckPlays,ends:window.__duckEnds};});
+  assert.equal(quacks.plays.length,3,'A duck break must play exactly three quacks');assert.ok(quacks.plays.every(p=>p.volume===1),'Duck quacks must use full playback volume');
+  for(let i=1;i<3;i++)assert.ok(quacks.plays[i].time-quacks.ends[i-1]>=220,'Quacks must have distinct pauses');
+  assert.ok(audio.peak>.45&&audio.rms>.03,'The source recording must have audible signal levels');
   assert.deepEqual(errors,[],'The figure workflow must not throw browser errors');
-  console.log(JSON.stringify({result:'Figure browser checks passed',initialWidth:initial,resizedWidth:resized,right,left,narrow}));
+  console.log(JSON.stringify({result:'Figure browser checks passed',initialWidth:initial,resizedWidth:resized,right,left,narrow,audio,quacks}));
 }finally{await browser.close();}
