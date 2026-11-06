@@ -18,7 +18,7 @@ try{
   ]}}]};
   await page.locator('input[type="file"][accept*=".json"]').setInputFiles({name:'figure-check.academica.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({format:'academica-backup',version:1,paper:fixture,assets:{}}))});
   const editor=page.locator('.academic-editor[data-section-id="figure-test-section"]');
-  await editor.waitFor();await page.getByRole('button',{name:'Edit figure',exact:true}).click({force:true});
+  await editor.waitFor();await page.getByRole('button',{name:'Edit figure',exact:true}).click();
   const tools=page.getByRole('complementary',{name:'Figure tools'});await tools.waitFor();
   const image=editor.locator('.figure-object img');await image.evaluate(image=>image.decode());await wait(500);
   const initial=(await image.boundingBox()).width;
@@ -49,8 +49,8 @@ try{
   assert.ok(narrow.panelTop>300&&narrow.panelHeight<=421,'Narrow-window tools must dock below the paper');
   assert.ok(narrow.pageHeight>180&&narrow.pageBottom<=narrow.panelTop+24,'The page must remain visible above the tools');
   await page.screenshot({path:'work/figure-proof/narrow.png',fullPage:true});
-  await page.getByRole('button',{name:'Done',exact:true}).click();await tools.waitFor({state:'hidden'});
-  await page.getByRole('button',{name:'Edit figure',exact:true}).click({force:true});await tools.waitFor();
+  await page.getByRole('button',{name:'Done',exact:true}).click();await tools.waitFor({state:'hidden'});await wait(700);
+  await page.getByRole('button',{name:'Edit figure',exact:true}).click();await tools.waitFor();
   assert.equal(await slider.inputValue(),'35');assert.equal(await page.getByRole('button',{name:'Text beside',exact:true}).getAttribute('aria-pressed'),'true');
   await page.getByRole('button',{name:'Done',exact:true}).click();
   await page.setViewportSize({width:1440,height:1000});await wait(500);
@@ -66,6 +66,17 @@ try{
   await page.getByRole('button',{name:'Done',exact:true}).click();await tools.waitFor({state:'hidden'});
   assert.equal(await editor.locator('.figure-object').count(),2);
   assert.ok(!(await editor.innerText()).includes('/figure'),'The slash command must disappear after inserting the image');
+  await page.getByRole('button',{name:'Paper',exact:true}).click();
+  const paperFrame=page.frameLocator('iframe[title="Paginated academic paper"]');
+  await paperFrame.locator('.pagedjs_page').first().waitFor({timeout:30000});
+  await paperFrame.locator('#status').waitFor({state:'hidden',timeout:30000});
+  const printed=await paperFrame.locator('#pages').evaluate(root=>[...root.querySelectorAll('figure img')].filter(image=>image.getBoundingClientRect().height>0).map(image=>{
+    const bounds=image.getBoundingClientRect(),content=image.closest('.pagedjs_page_content').getBoundingClientRect();
+    return{left:bounds.left,right:bounds.right,top:bounds.top,bottom:bounds.bottom,content:{left:content.left,right:content.right,top:content.top,bottom:content.bottom},caption:image.closest('figure').querySelector('figcaption')?.textContent};
+  }));
+  assert.equal(printed.length,2,'Paper view must show each figure once');
+  for(const image of printed){assert.ok(image.left>=image.content.left-2&&image.right<=image.content.right+2&&image.top>=image.content.top-2&&image.bottom<=image.content.bottom+2,'A wrapped figure must stay within the printed page margins');assert.ok(image.caption);}
+  await page.getByRole('button',{name:'Write',exact:true}).click();await editor.waitFor();
   const audio=await page.evaluate(async()=>{
     window.__duckPlays=[];window.__duckEnds=[];
     const watched=new WeakSet(),original=HTMLMediaElement.prototype.play;window.__restoreMediaPlay=()=>HTMLMediaElement.prototype.play=original;
@@ -87,7 +98,7 @@ try{
   for(let i=1;i<3;i++)assert.ok(quacks.plays[i].time-quacks.ends[i-1]>=220,'Quacks must have distinct pauses');
   assert.ok(audio.peak>.45&&audio.rms>.03,'The source recording must have audible signal levels');
   assert.deepEqual(errors,[],'The figure workflow must not throw browser errors');
-  console.log(JSON.stringify({result:'Figure browser checks passed',initialWidth:initial,resizedWidth:resized,right,left,narrow,audio,quacks}));
+  console.log(JSON.stringify({result:'Figure browser checks passed',initialWidth:initial,resizedWidth:resized,right,left,narrow,printed,audio,quacks}));
 }catch(error){
   console.error('Browser diagnostics:',JSON.stringify({errors,state:await page.evaluate(()=>({body:document.body.innerText.slice(0,7000),editors:[...document.querySelectorAll('.academic-editor')].map(e=>({section:e.getAttribute('data-section-id'),text:e.textContent.slice(0,120)}))})).catch(()=>null)}));
   await mkdir('work/figure-proof',{recursive:true});await page.screenshot({path:'work/figure-proof/failure.png',fullPage:true}).catch(()=>{});
