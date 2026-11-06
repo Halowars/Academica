@@ -4,17 +4,31 @@ import {appURL} from './lib/urls';
 import {ANIMAL_BREAK_MS,animalBreaks,randomAnimalPhoto,type AnimalKind} from './lib/animal-breaks';
 
 type Celebration={kind:AnimalKind;index:number;token:number};
-let audio:HTMLAudioElement|null=null,sequence=0;
+let audio:HTMLAudioElement|null=null,sequence=0,playback=0;
+let replayTimer:ReturnType<typeof setTimeout>|undefined;
 const sounds=new Map<AnimalKind,HTMLAudioElement>(),previous=new Map<AnimalKind,number>(),preloaded=new Set<AnimalKind>();
 function muted(){try{return (localStorage.getItem('academica-break-muted')??localStorage.getItem('academica-puppy-muted'))==='true';}catch{return false;}}
+function stopAnimalSound(){
+  playback++;
+  clearTimeout(replayTimer);
+  if(audio){audio.onended=null;audio.pause();}
+}
 function sound(kind:AnimalKind){
-  audio?.pause();
-  let next=sounds.get(kind);
-  if(!next){next=new Audio(appURL(kind+'/'+animalBreaks[kind].sound));next.volume=.3;next.preload='auto';sounds.set(kind,next);}
-  audio=next;audio.currentTime=0;return audio.play();
+  stopAnimalSound();
+  let player=sounds.get(kind);
+  if(!player){player=new Audio(appURL(kind+'/'+animalBreaks[kind].sound));player.preload='auto';sounds.set(kind,player);}
+  const next=player,ticket=playback;
+  audio=next;next.volume=kind==='duck'?1:.3;next.currentTime=0;
+  if(kind==='duck'){
+    let remaining=2;
+    const pace=()=>{if(ticket===playback&&Number.isFinite(next.duration)&&next.duration>0){next.preservesPitch=true;next.playbackRate=Math.max(1,next.duration/.8);}};
+    next.onloadedmetadata=pace;pace();
+    next.onended=()=>{if(ticket!==playback||remaining--<=0)return;replayTimer=setTimeout(()=>{if(ticket!==playback)return;next.currentTime=0;void next.play().catch(()=>{if(ticket===playback)window.dispatchEvent(new CustomEvent('academica-animal-sound-blocked',{detail:{token:sequence}}));});},280);};
+  }else{next.playbackRate=1;next.onloadedmetadata=null;}
+  return next.play();
 }
 export function showAnimalBreak(kind:AnimalKind){
-  audio?.pause();
+  stopAnimalSound();
   const config=animalBreaks[kind];
   if(!preloaded.has(kind)){preloaded.add(kind);config.photos.forEach(photo=>{const image=new Image();image.src=appURL(kind+'/'+photo.file);});}
   const index=randomAnimalPhoto(config.photos.length,previous.get(kind));previous.set(kind,index);
@@ -24,12 +38,12 @@ export function showAnimalBreak(kind:AnimalKind){
 }
 export default function AnimalBreak(){
   const [celebration,setCelebration]=useState<Celebration|null>(null),[loaded,setLoaded]=useState(0),[quiet,setQuiet]=useState(muted),[blockedToken,setBlockedToken]=useState(0);
-  function dismiss(){setCelebration(null);audio?.pause();}
+  function dismiss(){setCelebration(null);stopAnimalSound();}
   useEffect(()=>{
     const show=(event:Event)=>setCelebration((event as CustomEvent<Celebration>).detail);
     const block=(event:Event)=>setBlockedToken((event as CustomEvent<{token:number}>).detail.token);
     window.addEventListener('academica-animal-break',show);window.addEventListener('academica-animal-sound-blocked',block);
-    return()=>{window.removeEventListener('academica-animal-break',show);window.removeEventListener('academica-animal-sound-blocked',block);audio?.pause();};
+    return()=>{window.removeEventListener('academica-animal-break',show);window.removeEventListener('academica-animal-sound-blocked',block);stopAnimalSound();};
   },[]);
   useEffect(()=>{
     if(!celebration)return;
@@ -46,7 +60,7 @@ export default function AnimalBreak(){
     <aside className="animal-break" role="status" aria-label={'Four-second '+kind+' break'} data-ready={loaded===token}>
       <img src={appURL(kind+'/'+photo.file)} alt={photo.alt} onLoad={()=>setLoaded(token)}/>
       <button className="animal-close" aria-label={'Close '+kind+' break'} onClick={dismiss}><X size={16}/></button>
-      <div className="animal-caption"><span>{kind==='puppy'?<PawPrint size={15}/>:<span aria-hidden="true">🦆</span>}A little {kind} break.</span><button aria-label={blocked?'Play '+kind+' sound':quiet?'Unmute '+kind+' sound':'Mute '+kind+' sound'} onClick={()=>{if(blocked){play();return;}const next=!quiet;setQuiet(next);try{localStorage.setItem('academica-break-muted',String(next));}catch{}if(next)audio?.pause();else play();}}>{quiet?<VolumeX size={16}/>:<Volume2 size={16}/>}</button></div>
+      <div className="animal-caption"><span>{kind==='puppy'?<PawPrint size={15}/>:<span aria-hidden="true">🦆</span>}A little {kind} break.</span><button aria-label={blocked?'Play '+kind+' sound':quiet?'Unmute '+kind+' sound':'Mute '+kind+' sound'} onClick={()=>{if(blocked){play();return;}const next=!quiet;setQuiet(next);try{localStorage.setItem('academica-break-muted',String(next));}catch{}if(next)stopAnimalSound();else play();}}>{quiet?<VolumeX size={16}/>:<Volume2 size={16}/>}</button></div>
       <div className="animal-countdown" aria-hidden="true"/>
     </aside>
   </div>;

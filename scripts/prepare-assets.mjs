@@ -21,3 +21,16 @@ const extensionFiles={};for(const name of await readdir('extension'))extensionFi
 extensionFiles['Readability.js']=new Uint8Array(await readFile('node_modules/@mozilla/readability/Readability.js'));
 extensionFiles['READABILITY-LICENSE']=new Uint8Array(await readFile('node_modules/@mozilla/readability/LICENSE.md'));
 await mkdir('public/downloads',{recursive:true});await writeFile('public/downloads/academica-clipper.zip',zipSync(extensionFiles));
+
+ // Bundle the pinned CC0 single-quack sample locally; verify its exact Git blob.
+const {createHash}=await import('node:crypto');
+const quackPath='public/duck/quack-distinct-v2.mp3',quackSHA='d346b41022d03f3b7b20aa93e0860aae7bf4b78a';
+const quackHash=bytes=>createHash('sha1').update(Buffer.from('blob '+bytes.length+String.fromCharCode(0))).update(bytes).digest('hex');
+let quackBytes;try{quackBytes=await readFile(quackPath);}catch{}
+if(!quackBytes||quackHash(quackBytes)!==quackSHA){
+  const response=await fetch('https://raw.githubusercontent.com/jonjonsson/SoundMonster/7e07f0580aa5e40e7205b6be378787854a61f4e7/Public%20domain/quack%20duck.mp3',{signal:AbortSignal.timeout(20000)});
+  if(!response.ok)throw new Error('The bundled duck quack could not be downloaded: '+response.status);
+  quackBytes=Buffer.from(await response.arrayBuffer());
+  if(quackHash(quackBytes)!==quackSHA)throw new Error('Duck quack checksum changed; review the source before publishing.');
+  await mkdir('public/duck',{recursive:true});await writeFile(quackPath,quackBytes);
+}

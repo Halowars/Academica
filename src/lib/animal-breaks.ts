@@ -5,7 +5,7 @@ export const animalBreaks={
     {file:'sleepy.jpg',alt:'A tiny black puppy resting in the sunshine'},
     {file:'running.jpg',alt:'A happy puppy running through the grass'},
   ]},
-  duck:{sound:'quack.mp3',photos:[
+  duck:{sound:'quack-distinct-v2.mp3',photos:[
     {file:'duckling.jpg',alt:'A little duckling swimming across sunlit water'},
     {file:'family.jpg',alt:'A mother duck swimming with her little ducklings'},
     {file:'ducklings.jpg',alt:'Two little brown and yellow ducklings together'},
