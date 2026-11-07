@@ -18,3 +18,7 @@ export function applyEditorLink(editor:Editor,range:EditorRange,text:string,url:
   const marks=editor.state.doc.resolve(range.from).marks().filter(mark=>mark.type.name!=='link').map(mark=>({type:mark.type.name,attrs:mark.attrs}));
   return chain.insertContentAt(range,{type:'text',text:label,marks:[...marks,{type:'link',attrs:{href}}]}).unsetMark('link').run();
 }
+export function removeEditorLink(editor:Editor,range:EditorRange){
+  if(editor.isDestroyed)return false;const target=editorLinkTarget(editor,range);if(!target.href)return false;
+  return editor.chain().focus().setTextSelection(target.range).unsetLink().setTextSelection(target.range.to).run();
+}

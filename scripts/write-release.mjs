@@ -1,4 +1,4 @@
-import {readFile,writeFile} from 'node:fs/promises';
+import {readFile,readdir,writeFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
@@ -7,7 +7,11 @@ import {join} from 'node:path';
 const root=fileURLToPath(new URL('../',import.meta.url)),directory=join(root,'dist');
 const {version}=JSON.parse(await readFile(join(root,'package.json'),'utf8'));
 const html=await readFile(join(directory,'index.html'),'utf8');
-const paths=new Set(['index.html','duck/natural-three-quacks-v3.mp3']);
+const paths=new Set(['index.html']);
+for(const folder of ['puppy','duck','cat','jigsaw']){
+  let files;try{files=await readdir(join(directory,folder));}catch(error){if(error.code==='ENOENT')continue;throw error;}
+  for(const file of files)if(/\.(?:mp3|jpg|png|webp)$/.test(file))paths.add(folder+'/'+file);
+}
 for(const match of html.matchAll(/<(?:script|link)\b[^>]*\b(?:src|href)="([^"]+)"/g)){
   if(!match[1].startsWith('./'))continue;
   const path=match[1].slice(2);if(path.includes('..')||path.includes('?')||path.includes('#'))continue;

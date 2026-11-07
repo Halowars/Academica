@@ -6,6 +6,16 @@ The original Linea repository is separate and unchanged.
 
 ## Use
 
+### 0.6.0 notes, link controls, and command breaks
+
+**Notes** in the outline opens a full-size private sheet for the current project. It shares the research desk notebook, autosaves with the project, and stays outside manuscript word counts and submission exports. Existing notebook notes carry over.
+
+Click an embedded link to see a compact URL popover with **Open**, **Edit**, and **Remove** controls. Removing a link keeps its writing and formatting and supports Undo. Figure tools now include **Delete figure**, also reversible with Undo.
+
+`/duck` uses the owner's uploaded meme quack, repeated exactly three times in one 3.3-second recording. `/cat` shows a random kitten with confetti and a brief meow. `/jigsaw` randomly chooses one of the four supplied pictures and plays the original six-word *Saw* quote once, without confetti. These four-second breaks never add media to the paper. Dismissal, mute, sound fallback, and reduced-motion preferences are shared. Images and audio are bundled locally; credits are in their `public` media folders.
+
+Release verification now checks all bundled break images and recordings on both hosts, in addition to the application files.
+
 ### 0.5.9 natural duck calls and verified Firebase publishing
 
 `/duck` plays three different recorded duck calls once, at their original pitch and speed, with clear pauses. The 2.2-second CC0 recording is bundled with the app. Closing or muting the break stops it immediately.

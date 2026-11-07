@@ -17,6 +17,8 @@ export const slashCommands=[
   {name:'equation',label:'Equation',description:'Insert a numbered equation'},
   {name:'puppy',label:'Puppy break',description:'A puppy, confetti, and a little woof for four seconds'},
   {name:'duck',label:'Duck break',description:'A duck, confetti, and a little quack for four seconds'},
+  {name:'cat',label:'Cat break',description:'A cute kitten, confetti, and a little meow for four seconds'},
+  {name:'jigsaw',label:'Jigsaw break',description:'One of four pictures and the original play-a-game quote'},
 ] as const;
 
 export type SlashCommandName=(typeof slashCommands)[number]['name'];

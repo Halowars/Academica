@@ -11,8 +11,12 @@ The popup and sound stop after four seconds. Media never enters the manuscript o
 
 - `quack-distinct-v2.mp3` (legacy 0.5.8 sound): Sess8it, **Quacking Sound for Duck**, CC0 1.0. Original: https://freesound.org/people/Sess8it/sounds/532287/ . Normalized/trimmed/encoded version from SoundMonster: https://github.com/jonjonsson/SoundMonster/blob/7e07f0580aa5e40e7205b6be378787854a61f4e7/Public%20domain/quack%20duck.mp3 . Retained for older open tabs.
 
-## Current natural recording
+## Previous natural recording
 
 - `natural-three-quacks-v3.mp3`: cribbler, **Duck Quack**, CC0 1.0. https://freesound.org/people/cribbler/sounds/592376/
 
 Three different calls from 1.42–1.83, 2.24–2.64, and 3.20–3.51 seconds. Light 85 Hz wind/DC roll-off, 8 ms boundary fades, 420 ms pauses, and peak normalization. Original pitch and speed. The 2.2-second recording plays once; it already contains three calls.
+
+## Current meme recording
+
+meme-three-quacks-v4.mp3 uses the supplied Duck-Quack-SnapYT.App.mp3. A complete quack at 0.200–1.100 seconds is repeated exactly three times, with 300 ms of added silence between repetitions. The resulting file lasts 3.300 seconds and plays once, at the original speed and pitch. The input and requested sound were supplied by the user; no public-domain license is asserted for this media.

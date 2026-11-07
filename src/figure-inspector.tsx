@@ -1,9 +1,9 @@
 import {useEffect,useRef,useState} from 'react';
 import type {Editor} from '@tiptap/react';
-import {ImagePlus,X} from 'lucide-react';
+import {ImagePlus,Trash2,X} from 'lucide-react';
 import FigureControls from './figure-controls';
 import {figureLayout,type FigureWrapping} from './lib/figure-layout';
-import {figurePosition} from './lib/figure-editor';
+import {figurePosition,removeFigure} from './lib/figure-editor';
 import {uid,type Paper} from './lib/model';
 import {documentFormat,pageDimensions} from './lib/formats';
 import type {EditorRange} from './editor-extensions';
@@ -57,6 +57,6 @@ export default function FigureInspector({editor,range,attrs,pos,paper,cloud,onCl
   return <aside ref={panel} className="figure-inspector" aria-label="Figure tools" onKeyDown={event=>{if(event.key==='Escape'){event.stopPropagation();onClose();}}}>
     <header><div><ImagePlus size={17}/><span><strong>Figure</strong><small>Live on your paper</small></span></div><button type="button" className="icon-button" aria-label="Close figure tools" onClick={onClose}><X size={16}/></button></header>
     <div className="figure-inspector-body"><FigureControls src={draft.src} alt={draft.alt} width={layout.width} align={layout.align} wrap={layout.wrap} textWidth={textWidth} busy={busy} onImage={image} onWidth={figureWidth=>update({figureWidth})} onAlign={figureAlign=>update({figureAlign})} onWrap={wrapping} onError={setError}/><label>Caption<input aria-label="Figure caption" value={draft.caption} onChange={event=>update({caption:event.target.value})} placeholder="What should the reader understand?"/></label><details className="figure-alt"><summary>Alternative text</summary><label className="sr-only" htmlFor="figure-alt">Figure alternative text</label><textarea id="figure-alt" aria-label="Figure alternative text" rows={2} value={draft.alt} onChange={event=>update({alt:event.target.value})} placeholder="Describe the image for a reader who cannot see it"/></details>{error&&<p className="form-error" role="alert">{error}</p>}</div>
-    <footer><small>{busy?'Reading image…':'Changes save as you adjust.'}</small><button type="button" className="button primary" onClick={onClose}>Done</button></footer>
+    <footer>{inserted.current?<button type="button" className="figure-delete text-button" onClick={()=>{removeFigure(editor,latest.current.id,hint.current);onClose();}}><Trash2 size={14}/>Delete figure</button>:<small>{busy?'Reading image…':'Changes save as you adjust.'}</small>}<button type="button" className="button primary" onClick={onClose}>Done</button></footer>
   </aside>;
 }

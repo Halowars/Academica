@@ -6,7 +6,7 @@ import 'fake-indexeddb/auto';
 import nspell from 'nspell';
 import {Editor} from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
-import {createPaper,emptySource,uid,validatePaper,type Paper} from '../src/lib/model';
+import {createPaper,emptySource,uid,validatePaper,wordCount,type Paper} from '../src/lib/model';
 import {formatPaper} from '../src/lib/citations';
 import {bodyHTML,printHTML} from '../src/lib/render';
 import {paperCSS} from '../src/lib/render';
@@ -16,7 +16,7 @@ import {documentFormat,defaultFormat,formatDifferences} from '../src/lib/formats
 import {projectSearch,diffBlocks,reviewIssues,checkSourceHealth} from '../src/lib/project-tools';
 import {referencesBibTeX,referencesRIS,importReferences,sourceExport} from '../src/lib/interchange';
 import {unzipSync,strFromU8} from 'fflate';
-import {academicExtensions,type AcademicActions} from '../src/editor-extensions';
+import {academicExtensions,type AcademicActions,type LinkSelection} from '../src/editor-extensions';
 import {academicDecorationKey} from '../src/editor-decorations';
 import {spellingBlocks,verifiedQuotationRanges} from '../src/lib/editor-analysis';
 import {useWorkspace} from '../src/lib/store';
@@ -35,18 +35,18 @@ import {renderToStaticMarkup} from 'react-dom/server';
 import SourceReader from '../src/source-reader';
 import SectionHeading from '../src/section-heading';
 import {filterSlashCommands,slashCommandMatch,slashCommands} from '../src/lib/slash-commands';
-import {applyEditorLink,editorLinkTarget,normalizeEditorLink} from '../src/lib/editor-links';
+import {applyEditorLink,editorLinkTarget,normalizeEditorLink,removeEditorLink} from '../src/lib/editor-links';
 import {paragraphIndentCSS} from '../src/lib/paragraph-indent';
 import {installProjectSearchShortcut} from '../src/lib/workspace-shortcuts';
 import {pastedImage,readClipboardImage} from '../src/lib/clipboard-image';
 import {figureDimensions,figureFrameStyle,figureLayout,figureNodeStyle} from '../src/lib/figure-layout';
-import {figurePosition} from '../src/lib/figure-editor';
+import {figurePosition,removeFigure} from '../src/lib/figure-editor';
 import {grammarBlocks} from '../src/lib/grammar-analysis';
 import {checkGrammar} from '../src/lib/grammar-engine';
 import {LocalLinter} from 'harper.js';
 import {binary as grammarBinary} from 'harper.js/binary';
 const win=new Window({url:'https://halowars.github.io/Academica/'});
-for(const key of ['window','document','DOMParser','Node','Element','HTMLElement','Text','MutationObserver','ResizeObserver','KeyboardEvent','navigator','getComputedStyle','requestAnimationFrame','cancelAnimationFrame'] as const){const value=key==='window'?win:key==='getComputedStyle'?win.getComputedStyle.bind(win):key==='requestAnimationFrame'?win.requestAnimationFrame.bind(win):key==='cancelAnimationFrame'?win.cancelAnimationFrame.bind(win):(win as any)[key];Object.defineProperty(globalThis,key,{value,configurable:true,writable:true});}
+for(const key of ['window','document','DOMParser','Node','Element','HTMLElement','HTMLAnchorElement','Text','MutationObserver','ResizeObserver','KeyboardEvent','navigator','getComputedStyle','requestAnimationFrame','cancelAnimationFrame'] as const){const value=key==='window'?win:key==='getComputedStyle'?win.getComputedStyle.bind(win):key==='requestAnimationFrame'?win.requestAnimationFrame.bind(win):key==='cancelAnimationFrame'?win.cancelAnimationFrame.bind(win):(win as any)[key];Object.defineProperty(globalThis,key,{value,configurable:true,writable:true});}
 Object.assign(globalThis,{indexedDB,IDBKeyRange});
 let count=0;function test(label:string,fn:()=>void){fn();console.log('✓ '+label);count++;}
 test('Ctrl/Cmd S opens search from editable text, prevents browser save, and ignores held-key repeats',()=>{const field=win.document.createElement('input');win.document.body.append(field);let opens=0,bubbled=0;field.addEventListener('keydown',()=>bubbled++);const remove=installProjectSearchShortcut(window,()=>opens++);for(const modifiers of [{ctrlKey:true},{metaKey:true}]){const event=new win.KeyboardEvent('keydown',{key:'s',code:'KeyS',bubbles:true,cancelable:true,...modifiers});field.dispatchEvent(event);assert.equal(event.defaultPrevented,true);}const repeat=new win.KeyboardEvent('keydown',{key:'s',ctrlKey:true,repeat:true,bubbles:true,cancelable:true});field.dispatchEvent(repeat);assert.equal(repeat.defaultPrevented,true);assert.equal(opens,2);assert.equal(bubbled,0);for(const options of [{key:'f',ctrlKey:true},{key:'k',metaKey:true},{key:'s',ctrlKey:true,shiftKey:true},{key:'s',ctrlKey:true,altKey:true},{key:'s',ctrlKey:true,isComposing:true}]){const event=new win.KeyboardEvent('keydown',{...options,bubbles:true,cancelable:true});field.dispatchEvent(event);assert.equal(event.defaultPrevented,false);}remove();const after=new win.KeyboardEvent('keydown',{key:'s',ctrlKey:true,bubbles:true,cancelable:true});field.dispatchEvent(after);assert.equal(after.defaultPrevented,false);assert.equal(opens,2);field.remove();});
@@ -113,6 +113,12 @@ const fallbackImport=await importSource('https://public.example.org/article');te
 fallbackRequests.length=0;await assert.rejects(()=>importSource('https://public.example.org/article',{publicWeb:false}),/manually/);test('Disabling public web reading prevents third-party requests',()=>assert.equal(fallbackRequests.length,1));
 globalThis.fetch=async input=>{fallbackRequests.push(String(input));return new Response('<html><title>Just a moment...</title><body>Please confirm you are a human by completing the captcha challenge below.</body></html>',{headers:{'Content-Type':'text/html'}});};fallbackRequests.length=0;await assert.rejects(()=>importSource('https://public.example.org/blocked'),/human-verification/);test('Publisher verification does not trigger a proxy retry',()=>assert.equal(fallbackRequests.length,1));
 globalThis.fetch=async input=>{if(String(input).startsWith('https://r.jina.ai/'))return Response.json(readerPayload);throw new TypeError('Failed to fetch');};const filled=await retrieveSourceText(originalReference);test('Older metadata-only sources can fill their reader without replacing edits',()=>{assert.equal(filled.id,originalReference.id);assert.equal(filled.title,originalReference.title);assert.equal(filled.passages.length,2);assert.equal(filled.textAttemptVersion,2);});globalThis.fetch=originalFetch;
+test('Full-page notes share saved research notes, preserve article identity, and stay outside the paper',()=>{
+  const before=structuredClone(p);useWorkspace.getState().setPaper(before);const count=wordCount(before),marker='PRIVATE_NOTE_SHEET_CONTENT';
+  useWorkspace.getState().updateResearchNotes(marker);const after=useWorkspace.getState().paper!;
+  assert.equal(after.researchNotes,marker);assert.equal(after.sections,before.sections);assert.equal(after.sources,before.sources);assert.equal(after.annotations,before.annotations);assert.notEqual(before.researchNotes,marker);
+  assert.equal(validatePaper(after).researchNotes,marker);assert.equal(wordCount(after),count);assert.ok(!bodyHTML(after).includes(marker));assert.ok(!printHTML(after).includes(marker));useWorkspace.getState().setPaper(p);
+});
 const commandCalls:string[]=[];const quotationCalls:{range:{from:number;to:number};quote?:string}[]=[];useWorkspace.getState().setPaper(p);
 const actions:AcademicActions={activate(){},annotation(){},source(){},editObject(){},command(name,editor,range,quote){commandCalls.push(name);quotationCalls.push({range,quote});if(name==='note'||name==='todo'){const id=uid();useWorkspace.getState().edit(paper=>{paper.annotations[id]={id,kind:name==='note'?'note':'todo',context:'Claim',text:'',tasks:[],createdAt:new Date().toISOString()};});editor.commands.insertContentAt(range.from,[{type:'annotation',attrs:{id}},{type:'text',text:' '}]);}}};
 const editor=new Editor({element:win.document.createElement('div') as any,extensions:[StarterKit,...academicExtensions(actions)],content:'<p>A supported claim. </p>'});
@@ -128,12 +134,26 @@ useWorkspace.getState().updateAnnotation(annotationId,a=>a.tasks.push({id:uid(),
 test('Checklist edits preserve the editor marker',()=>assert.ok(JSON.stringify(editor.getJSON()).includes(annotationId)));
 editor.commands.insertContent(' /cite');await new Promise<void>(r=>queueMicrotask(()=>r()));test('Cite consumes only its command and preserves earlier text and markers',()=>{assert.ok(editor.getText().includes('A supported claim.'));assert.ok(!editor.getText().includes('/cite'));assert.equal(commandCalls.at(-1),'cite');assert.ok(JSON.stringify(editor.getJSON()).includes(annotationId));});editor.commands.setContent('<p>A typed "ordinary quote"</p>');const beforeTyped=commandCalls.length;let handled=false;editor.view.someProp('handleTextInput',fn=>{handled=fn(editor.view,editor.state.doc.content.size-1,editor.state.doc.content.size-1,'"',()=>editor.state.tr)||handled;});test('Typing quotation marks does not interrupt writing',()=>{assert.equal(handled,false);assert.equal(commandCalls.length,beforeTyped);});
 editor.commands.setContent('<p>Keep this writing. </p>');editor.commands.setTextSelection(editor.state.doc.content.size-1);editor.commands.insertContent(' /duck');await new Promise<void>(r=>queueMicrotask(r));test('Duck appears in slash search and consumes only its command without adding media to the manuscript',()=>{assert.equal(commandCalls.at(-1),'duck');assert.equal(editor.getText(),'Keep this writing. ');assert.deepEqual(filterSlashCommands('duck').map(command=>command.name),['duck']);assert.ok(!JSON.stringify(editor.getJSON()).includes('image'));});
+editor.commands.setContent('<p>Keep this writing. </p>');editor.commands.setTextSelection(editor.state.doc.content.size-1);editor.commands.insertContent(' /cat');await new Promise<void>(r=>queueMicrotask(r));
+test('Cat is searchable and consumes its command without adding media to the paper',()=>{assert.equal(commandCalls.at(-1),'cat');assert.equal(editor.getText(),'Keep this writing. ');assert.deepEqual(filterSlashCommands('cat').map(command=>command.name),['cat']);assert.ok(!JSON.stringify(editor.getJSON()).includes('image'));});
+editor.commands.setContent('<p>Keep this writing. </p>');editor.commands.setTextSelection(editor.state.doc.content.size-1);editor.commands.insertContent(' /jigsaw');await new Promise<void>(r=>queueMicrotask(r));
+test('Jigsaw is searchable and consumes its command without adding media to the paper',()=>{assert.equal(commandCalls.at(-1),'jigsaw');assert.equal(editor.getText(),'Keep this writing. ');assert.deepEqual(filterSlashCommands('jigsaw').map(command=>command.name),['jigsaw']);assert.ok(!JSON.stringify(editor.getJSON()).includes('image'));});
 editor.commands.setContent('<p>Existing writing. </p>');editor.commands.setTextSelection(editor.state.doc.content.size-1);const paste='A copied section with enough words to cite.';editor.view.pasteText(paste,{clipboardData:{getData:(kind:string)=>kind==='text/plain'?paste:''}} as any);await new Promise<void>(r=>queueMicrotask(r));test('Native ProseMirror paste prompts a citation after inserting the passage',()=>{assert.equal(quotationCalls.at(-1)?.quote,paste);assert.equal(editor.state.doc.textBetween(quotationCalls.at(-1)!.range.from,quotationCalls.at(-1)!.range.to),paste);assert.ok(editor.getText().includes('Existing writing.'));});
 editor.destroy();
 const formatEditor=new Editor({element:document.createElement('div'),extensions:[StarterKit,...academicExtensions(actions)],content:'<p>Read the study now.</p>'});
 test('Ctrl/Cmd K opens link editing with the selected writing range',()=>{formatEditor.commands.setTextSelection({from:6,to:15});formatEditor.view.someProp('handleKeyDown',handler=>handler(formatEditor.view,new win.KeyboardEvent('keydown',{key:'k',code:'KeyK',keyCode:75,ctrlKey:true}) as any));assert.equal(commandCalls.at(-1),'link');assert.deepEqual(quotationCalls.at(-1)?.range,{from:6,to:15});});
 test('Links use readable labels, preserve surrounding writing, and stop at their boundary',()=>{assert.equal(applyEditorLink(formatEditor,{from:6,to:15},'Study details','example.org/paper'),true);assert.equal(formatEditor.getText(),'Read Study details now.');formatEditor.commands.setTextSelection(10);assert.deepEqual(editorLinkTarget(formatEditor,{from:10,to:10}),{range:{from:6,to:19},text:'Study details',href:'https://example.org/paper'});assert.ok(formatEditor.getHTML().includes('href="https://example.org/paper"'));formatEditor.commands.setTextSelection(formatEditor.state.doc.content.size-1);formatEditor.commands.insertContent(' More.');assert.equal(formatEditor.state.doc.nodeAt(formatEditor.state.doc.content.size-2)?.marks.some(m=>m.type.name==='link'),false);});
 test('The link form rejects executable URLs and accepts normal secure links',()=>{assert.equal(normalizeEditorLink('javascript:alert(1)'),'');assert.equal(normalizeEditorLink('data:text/html,test'),'');assert.equal(normalizeEditorLink('https://example.org/a b'),'https://example.org/a%20b');});
+let clickedLink:LinkSelection|undefined;
+const clickActions:AcademicActions={...actions,link:selection=>{clickedLink=selection;}};
+const linkEditor=new Editor({element:document.createElement('div'),extensions:[StarterKit.configure({link:{openOnClick:false}}),...academicExtensions(clickActions)],content:'<p>Read <a href="https://example.org/paper"><strong>study</strong> details</a> now.</p>'});
+test('Clicking a formatted link previews its whole URL without editing the words',()=>{
+  const anchor=linkEditor.view.dom.querySelector('a')!,event=new win.MouseEvent('click',{bubbles:true,cancelable:true}),before=JSON.stringify(linkEditor.getJSON());Object.defineProperty(event,'target',{value:anchor});linkEditor.view.someProp('handleClick',handler=>handler(linkEditor.view,8,event as any));
+  assert.ok(clickedLink);assert.equal(clickedLink.element,anchor);assert.deepEqual(clickedLink.range,{from:6,to:19});assert.equal(linkEditor.state.selection.from,8);assert.equal(JSON.stringify(linkEditor.getJSON()),before);assert.equal(event.defaultPrevented,true);
+});
+test('Removing a link keeps its display text and formatting and can be undone',()=>{
+  assert.ok(clickedLink);assert.equal(removeEditorLink(linkEditor,clickedLink.range),true);assert.equal(linkEditor.getText(),'Read study details now.');assert.ok(linkEditor.getHTML().includes('<strong>study</strong>'));assert.ok(!linkEditor.getHTML().includes('<a '));assert.equal(linkEditor.commands.undo(),true);assert.ok(linkEditor.getHTML().includes('https://example.org/paper'));
+});linkEditor.destroy();
 formatEditor.commands.setContent('<p>A reference that wraps across multiple lines.</p>');formatEditor.commands.setTextSelection(2);formatEditor.commands.updateAttributes('paragraph',{hangingIndent:.5,firstIndent:0});formatEditor.commands.setTextSelection(formatEditor.state.doc.content.size-1);formatEditor.commands.splitBlock();
 test('Hanging indent continues to the next paragraph and uses layout rather than inserted spaces',()=>{assert.equal(formatEditor.getJSON().content?.[1].attrs?.hangingIndent,.5);assert.equal(formatEditor.getText().trim(),'A reference that wraps across multiple lines.');assert.ok(formatEditor.getHTML().includes('padding-left: 0.5in'));assert.equal(paragraphIndentCSS({hangingIndent:.5}),'padding-left:0.5in;text-indent:-0.5in');});
 formatEditor.view.someProp('handleKeyDown',handler=>handler(formatEditor.view,new win.KeyboardEvent('keydown',{key:'Enter',code:'Enter',keyCode:13}) as any));
@@ -166,7 +186,8 @@ await ownerA.setLocalTrash(p.id,'2026-11-06T03:00:00.000Z',3,false);const trashe
 test('Print assets resolve beneath the GitHub Pages project path',()=>{const html=printHTML(p);assert.ok(html.includes('https://halowars.github.io/Academica/'));assert.ok(html.includes('src="vendor/paged.polyfill.js"'));assert.ok(!html.includes('src="/vendor/'));});
 test('Print content safely escapes closing-script sequences',()=>{const next=structuredClone(p);next.sections[0].content.content!.push({type:'paragraph',content:[{type:'text',text:'</script><script>unsafe</script>'}]});assert.ok(printHTML(next).includes('\\u003c'));assert.ok(!printHTML(next).includes('</script><script>unsafe'));});
 const blobs:Blob[]=[];const originalURL=URL.createObjectURL;URL.createObjectURL=blob=>{blobs.push(blob as Blob);return originalURL(blob);};win.HTMLAnchorElement.prototype.click=function(){};
-await exportWord(p);await mkdir('work',{recursive:true});await writeFile('work/export-smoke.docx',new Uint8Array(await blobs.at(-1)!.arrayBuffer()));test('Word export produces a valid ZIP-based document',()=>assert.equal(blobs.at(-1)!.type,'application/vnd.openxmlformats-officedocument.wordprocessingml.document'));
+await exportWord({...p,researchNotes:'PRIVATE_NOTE_WORD_EXPORT'});await mkdir('work',{recursive:true});await writeFile('work/export-smoke.docx',new Uint8Array(await blobs.at(-1)!.arrayBuffer()));test('Word export produces a valid ZIP-based document',()=>assert.equal(blobs.at(-1)!.type,'application/vnd.openxmlformats-officedocument.wordprocessingml.document'));
+const privateNotesWord=unzipSync(new Uint8Array(await blobs.at(-1)!.arrayBuffer()));test('A private note sheet is excluded from Word output',()=>assert.ok(!strFromU8(privateNotesWord['word/document.xml']).includes('PRIVATE_NOTE_WORD_EXPORT')));
 await exportWord(formattedPaper);const linkedWordFiles=unzipSync(new Uint8Array(await blobs.at(-1)!.arrayBuffer()));test('Word preserves true hanging indents and clickable links with readable labels',()=>{const document=strFromU8(linkedWordFiles['word/document.xml']),relationships=strFromU8(linkedWordFiles['word/_rels/document.xml.rels']);assert.ok(document.includes('w:left="720"'));assert.ok(document.includes('w:hanging="720"'));assert.ok(document.includes('<w:hyperlink'));assert.ok(document.includes('Study details'));assert.ok(relationships.includes('Target="https://example.org/paper"'));});URL.createObjectURL=originalURL;
 test('Wrapped figures preserve safe text-flow settings in backups, reading, and print',()=>{
   const paper=structuredClone(figurePaper),attrs=paper.sections[0].content.content![0].attrs!;
@@ -189,6 +210,10 @@ test('Live figure changes find the same image after surrounding text edits and p
   assert.equal(editor.state.doc.nodeAt(current)!.attrs.figureWidth,35);assert.equal(editor.state.doc.nodeAt(current)!.attrs.caption,'Keep this caption');
   assert.ok(editor.getText().includes('Text beside the figure.'));
   editor.commands.deleteRange({from:current,to:current+1});assert.equal(figurePosition(editor.state.doc,'live-figure',current),undefined);editor.destroy();
+});
+test('Deleting a figure preserves nearby writing and other images, and Undo restores its caption',()=>{
+  const editor=new Editor({element:document.createElement('div'),extensions:[StarterKit,...academicExtensions(actions)],content:{type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'Before the image.'}]},{type:'figure',attrs:{id:'remove-this',src:'data:image/png;base64,iVBORw0KGgo=',caption:'Restore this caption'}},{type:'paragraph',content:[{type:'text',text:'Keep these words.'}]},{type:'figure',attrs:{id:'keep-this',src:'data:image/png;base64,iVBORw0KGgo=',caption:'Keep this other image'}},{type:'paragraph'}]}});
+  const hint=figurePosition(editor.state.doc,'remove-this');editor.commands.insertContentAt(1,'New text. ');assert.equal(removeFigure(editor,'remove-this',hint),true);assert.equal(figurePosition(editor.state.doc,'remove-this'),undefined);assert.notEqual(figurePosition(editor.state.doc,'keep-this'),undefined);assert.ok(editor.getText().includes('Keep these words.'));assert.equal(editor.commands.undo(),true);const restored=figurePosition(editor.state.doc,'remove-this')!;assert.equal(editor.state.doc.nodeAt(restored)!.attrs.caption,'Restore this caption');editor.destroy();
 });
 const pixelPNG='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a34sAAAAASUVORK5CYII=',beforeImage=Object.getOwnPropertyDescriptor(globalThis,'Image'),beforeCanvas=document.createElement.bind(document),beforeFigureURL=URL.createObjectURL;
 try{

@@ -117,6 +117,7 @@
 .animal-celebration{position:fixed;inset:0;z-index:105;pointer-events:none;}
 .animal-break{position:absolute;right:25px;bottom:64px;width:min(280px,calc(100vw - 32px));padding:6px;background:var(--panel);color:var(--ink);border:1px solid var(--border);border-radius:15px;box-shadow:0 18px 70px #17242d55;overflow:hidden;pointer-events:auto;animation:animal-hello .3s ease-out;}
 .animal-break>img{display:block;width:100%;height:230px;object-fit:cover;object-position:center 40%;border-radius:10px;background:var(--paper);}
+.animal-break[data-kind="jigsaw"]>img{object-fit:contain;background:#111;object-position:center;}
 .animal-close{position:absolute;right:13px;top:13px;display:flex;align-items:center;justify-content:center;width:27px;height:27px;border-radius:50%;color:white;background:#1c2c2e70;}
 .animal-caption{display:flex;align-items:center;gap:10px;padding:12px 8px 10px;font-size:12px;}
 .animal-caption>span{display:flex;align-items:center;gap:8px;}
@@ -202,3 +203,30 @@
 @media(pointer:coarse){.figure-inspector input:not([type=range]),.figure-inspector textarea{font-size:16px;}.figure-inspector button{min-height:40px;}.figure-inspector input[type=range]{min-height:36px;}}
 
 .academic-editor>.node-figure[data-figure-wrap=wrap]{z-index:1;}
+
+/* Private project notes use the same paper palette, with room to think. */
+.notes-page{width:min(920px,100%);padding:34px 36px 54px;margin:0 auto;}
+.notes-page-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin:0 0 22px;}
+.notes-page-heading h1{font:400 28px/1.2 'Libre Caslon Display',Georgia,serif;margin:0 0 8px;color:var(--ink);}
+.notes-page-heading p{font-size:11px;line-height:1.7;color:var(--muted);margin:0;}
+.notes-page-heading>span{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted);padding-top:7px;white-space:nowrap;}
+.notes-sheet.writing-page{padding:45px 56px 28px;min-height:930px;font-family:var(--editor-font);font-size:var(--editor-size);}
+.notes-sheet>header{margin-bottom:30px;}
+.notes-sheet-label{display:block;color:var(--muted);font:9px/1.5 'DM Sans',system-ui,sans-serif;letter-spacing:1.6px;text-transform:uppercase;}
+.notes-sheet h2{font:400 23px/1.5 'Libre Caslon Display',Georgia,serif;margin:10px 0 20px;overflow-wrap:anywhere;}
+.notes-sheet-rule{display:block;height:1px;background:var(--border);}
+.notes-sheet textarea{display:block;width:100%;min-height:640px;margin:0;padding:0;resize:none;overflow:hidden;outline:none;border:0;border-radius:0;background:transparent;box-shadow:none;color:var(--paper-ink);font:inherit;line-height:1.95;tab-size:4;}
+.notes-sheet textarea:focus{border:0;box-shadow:none;}
+.notes-sheet textarea::placeholder{color:color-mix(in srgb,var(--paper-ink) 40%,var(--paper));}
+.notes-sheet>footer{border-top:1px solid var(--line);padding-top:15px;margin-top:28px;color:var(--muted);font:9px/1.6 'DM Sans',system-ui,sans-serif;}
+.figure-delete{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted);padding:6px 0;}
+.figure-delete:hover,.figure-delete:focus-visible{color:#d7a39a;}
+.link-preview{position:fixed;z-index:95;display:flex;align-items:center;gap:10px;width:min(360px,calc(100vw - 24px));padding:7px 8px 7px 12px;border:1px solid var(--border);border-radius:8px;background:var(--panel);color:var(--ink);box-shadow:0 7px 28px #10252735;font:11px/1.4 'DM Sans',system-ui,sans-serif;}
+.link-preview-url{display:flex;align-items:center;gap:8px;min-width:0;flex:1;color:var(--accent);text-decoration:none;}
+.link-preview-url>span{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.link-preview-url>svg{flex-shrink:0;}
+.link-preview-url:hover>span{text-decoration:underline;text-underline-offset:3px;}
+.link-preview-actions{display:flex;align-items:center;gap:2px;padding-left:5px;border-left:1px solid var(--line);}
+.link-preview .icon-button{width:30px;height:30px;min-width:30px;border-radius:5px;}
+@container(max-width:700px){.notes-page{padding:24px 15px 35px;}.notes-page-heading{gap:10px;}.notes-page-heading h1{font-size:25px;}.notes-sheet.writing-page{padding:30px 25px 22px;min-height:850px;}.notes-sheet textarea{font-size:max(16px,var(--editor-size));}.notes-sheet h2{font-size:21px;}}
+@media(pointer:coarse){.link-preview .icon-button{width:40px;height:40px;min-width:40px;}.link-preview{font-size:12px;}.figure-delete{min-height:40px;}.notes-sheet textarea{font-size:max(16px,var(--editor-size));}}
