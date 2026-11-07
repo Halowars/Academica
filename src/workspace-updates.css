@@ -206,10 +206,16 @@
 
 /* Private project notes use the same paper palette, with room to think. */
 .notes-page{width:min(920px,100%);padding:34px 36px 54px;margin:0 auto;}
-.notes-page-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin:0 0 22px;}
+.notes-page-heading{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:18px;margin:0 0 22px;}
 .notes-page-heading h1{font:400 28px/1.2 'Libre Caslon Display',Georgia,serif;margin:0 0 8px;color:var(--ink);}
 .notes-page-heading p{font-size:11px;line-height:1.7;color:var(--muted);margin:0;}
-.notes-page-heading>span{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted);padding-top:7px;white-space:nowrap;}
+.notes-page-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;}
+.notes-page-actions>span{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted);white-space:nowrap;}
+.notes-page-actions .button{min-height:44px;}
+.desk-tabs .desk-notes-expand{margin-left:auto;min-height:44px;white-space:nowrap;}
+.desk-notes-expand+.desk-size{margin-left:0;}
+.research-notebook{tab-size:4;}
+@media (pointer:coarse){.research-notebook{font-size:16px;}}
 .notes-sheet.writing-page{padding:45px 56px 28px;min-height:930px;font-family:var(--editor-font);font-size:var(--editor-size);}
 .notes-sheet>header{margin-bottom:30px;}
 .notes-sheet-label{display:block;color:var(--muted);font:9px/1.5 'DM Sans',system-ui,sans-serif;letter-spacing:1.6px;text-transform:uppercase;}

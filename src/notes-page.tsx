@@ -1,14 +1,66 @@
-import {useLayoutEffect,useRef} from 'react';
-import {LockKeyhole} from 'lucide-react';
+import { useEffect, useLayoutEffect, useRef, type KeyboardEvent } from 'react';
+import { LockKeyhole, PanelBottom } from 'lucide-react';
+import { bindTypingSound } from './lib/typing-sound';
 
-export default function NotesPage({title,value,onChange}:{title:string;value:string;onChange:(value:string)=>void}){
-  const input=useRef<HTMLTextAreaElement>(null);
-  useLayoutEffect(()=>{const element=input.current;if(!element)return;const resize=()=>{element.style.height='auto';element.style.height=Math.max(640,element.scrollHeight)+'px';};resize();const observer=new ResizeObserver(resize);observer.observe(element.parentElement!);return()=>observer.disconnect();},[value]);
-  function tab(event:React.KeyboardEvent<HTMLTextAreaElement>){
-    if(event.key!=='Tab'||event.shiftKey)return;event.preventDefault();const field=event.currentTarget,from=field.selectionStart,to=field.selectionEnd;onChange(value.slice(0,from)+'\t'+value.slice(to));requestAnimationFrame(()=>field.setSelectionRange(from+1,from+1));
+type NotesProps = {
+  value: string;
+  onChange: (value: string) => void;
+  typingSound: boolean;
+};
+
+export function NotesEditor({ value, onChange, typingSound, inDesk = false }: NotesProps & { inDesk?: boolean }) {
+  const input = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const field = input.current;
+    if (inDesk || !field?.parentElement) return;
+    const resize = () => {
+      field.style.height = 'auto';
+      field.style.height = Math.max(640, field.scrollHeight) + 'px';
+    };
+    resize();
+    const observer = new ResizeObserver(resize);
+    observer.observe(field.parentElement);
+    return () => observer.disconnect();
+  }, [inDesk, value]);
+
+  useEffect(() => {
+    if (typingSound && input.current) return bindTypingSound(input.current);
+  }, [typingSound]);
+
+  function indent(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== 'Tab' || event.shiftKey) return;
+    event.preventDefault();
+    const field = event.currentTarget;
+    const { selectionStart, selectionEnd } = field;
+    onChange(value.slice(0, selectionStart) + '\t' + value.slice(selectionEnd));
+    requestAnimationFrame(() => field.setSelectionRange(selectionStart + 1, selectionStart + 1));
   }
+
+  return <textarea
+    ref={input}
+    className={inDesk ? 'research-notebook' : undefined}
+    aria-label={inDesk ? 'Research desk notes editor' : 'Private project notes'}
+    value={value}
+    onChange={event => onChange(event.target.value)}
+    onKeyDown={indent}
+    placeholder={inDesk ? 'Your wider research thoughts, questions, and observations…' : 'Ideas, reading notes, questions to come back to…'}
+    spellCheck={inDesk ? undefined : false}
+  />;
+}
+
+export default function NotesPage({ title, onDock, ...notes }: NotesProps & { title: string; onDock: () => void }) {
   return <section className="notes-page" aria-label="Project notes">
-    <header className="notes-page-heading"><div><h1>Notes</h1><p>Kept with this project, outside your manuscript and paper exports.</p></div><span><LockKeyhole size={13}/>Private</span></header>
-    <article className="notes-sheet writing-page"><header><span className="notes-sheet-label">Working notes</span><h2>{title||'Untitled paper'}</h2><span className="notes-sheet-rule"/></header><textarea ref={input} aria-label="Private project notes" value={value} onChange={event=>onChange(event.target.value)} onKeyDown={tab} placeholder="Ideas, reading notes, questions to come back to…" spellCheck={false}/><footer>Saved with this project · Not part of the manuscript</footer></article>
+    <header className="notes-page-heading">
+      <div><h1>Notes</h1><p>Kept with this project, outside your manuscript and paper exports.</p></div>
+      <div className="notes-page-actions">
+        <span><LockKeyhole size={13} />Private</span>
+        <button type="button" className="button subtle" onClick={onDock}><PanelBottom size={15} />Open in research desk</button>
+      </div>
+    </header>
+    <article className="notes-sheet writing-page">
+      <header><span className="notes-sheet-label">Working notes</span><h2>{title || 'Untitled paper'}</h2><span className="notes-sheet-rule" /></header>
+      <NotesEditor {...notes} />
+      <footer>Saved with this project · Not part of the manuscript</footer>
+    </article>
   </section>;
 }

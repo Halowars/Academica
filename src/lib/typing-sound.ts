@@ -41,14 +41,14 @@ const typingInputs = new Set([
   'insertParagraph', 'insertLineBreak', 'deleteContentBackward', 'deleteContentForward'
 ]);
 
-export function typingSoundEvents(enabled: () => boolean): NonNullable<EditorProps['handleDOMEvents']> {
+function typingInputEvents(enabled: () => boolean) {
   let keyInput: { types: string[]; at: number } | undefined;
   const activate = () => { if (enabled()) unlockTypingSound(); };
 
   return {
     pointerup: activate,
     touchend: activate,
-    keydown(_view, event) {
+    keydown(event: KeyboardEvent) {
       keyInput = undefined;
       if (!enabled() || event.isComposing || event.ctrlKey || event.metaKey || event.altKey) return;
       unlockTypingSound();
@@ -60,11 +60,32 @@ export function typingSoundEvents(enabled: () => boolean): NonNullable<EditorPro
       }
     },
     keyup() { keyInput = undefined; },
-    beforeinput(_view, event) {
+    beforeinput(event: InputEvent) {
       if (!enabled() || !typingInputs.has(event.inputType)) return;
       const alreadyPlayed = keyInput?.types.includes(event.inputType) && event.timeStamp - keyInput.at < 80;
       keyInput = undefined;
       if (!alreadyPlayed) playTypingSound();
     }
   };
+}
+
+export function typingSoundEvents(enabled: () => boolean): NonNullable<EditorProps['handleDOMEvents']> {
+  const events = typingInputEvents(enabled);
+  return {
+    ...events,
+    keydown: (_view, event) => events.keydown(event),
+    beforeinput: (_view, event) => events.beforeinput(event)
+  };
+}
+
+export function bindTypingSound(field: HTMLTextAreaElement) {
+  const events = typingInputEvents(() => true);
+  const controller = new AbortController();
+  const options = { signal: controller.signal };
+  field.addEventListener('pointerup', events.pointerup, options);
+  field.addEventListener('touchend', events.touchend, options);
+  field.addEventListener('keydown', events.keydown, options);
+  field.addEventListener('keyup', events.keyup, options);
+  field.addEventListener('beforeinput', events.beforeinput, options);
+  return () => controller.abort();
 }
