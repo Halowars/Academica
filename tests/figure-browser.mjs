@@ -85,7 +85,7 @@ try{
   await page.screenshot({path:'work/figure-proof/notes-narrow.png',fullPage:true});
   await page.getByRole('button',{name:'Manuscript',exact:true}).click();await editor.waitFor();
   await page.setViewportSize({width:1440,height:1000});await wait(500);
-  await editor.locator('p:last-of-type').click({position:{x:30,y:10}});await page.keyboard.press('Control+End');await page.keyboard.press('Enter');await page.keyboard.type('/figure');await page.keyboard.press('Enter');
+  await editor.focus();await page.keyboard.press('Control+End');await page.keyboard.press('Enter');await page.keyboard.type('/figure');await page.keyboard.press('Enter');
   await tools.waitFor();
   await page.getByLabel('Figure image',{exact:true}).setInputFiles({name:'test-figure.png',mimeType:'image/png',buffer:Buffer.from(pixel.split(',')[1],'base64')});
   await page.waitForFunction(()=>document.querySelectorAll('.figure-object img').length===2);
@@ -128,7 +128,7 @@ try{
     if(start>=0&&(last-start+1)*.02>=.1)bursts.push({start:start*.02,end:(last+1)*.02});
     return{duration:buffer.duration,peak,rms:Math.sqrt(power/samples.length),bursts};
   });
-  await editor.locator('p:last-of-type').click();await page.keyboard.press('Control+End');await page.keyboard.press('Enter');await page.keyboard.type('/duck');await page.keyboard.press('Enter');
+  await editor.focus();await page.keyboard.press('Control+End');await page.keyboard.press('Enter');await page.keyboard.type('/duck');await page.keyboard.press('Enter');
   await wait(3800);
   const quacks=await page.evaluate(()=>{window.__restoreMediaPlay();return{plays:window.__duckPlays,ends:window.__duckEnds};});
   assert.equal(quacks.plays.length,1,'The three-quack recording must play once');assert.equal(quacks.plays[0].volume,1);assert.equal(quacks.plays[0].rate,1,'The supplied meme recording must keep its original pitch and speed');
@@ -140,7 +140,7 @@ try{
     window.__breakPlays=[];const original=HTMLMediaElement.prototype.play;window.__restoreBreakPlay=()=>HTMLMediaElement.prototype.play=original;
     HTMLMediaElement.prototype.play=function(){window.__breakPlays.push({src:new URL(this.src).pathname,volume:this.volume,rate:this.playbackRate});return original.apply(this,arguments);};
   });
-  async function breakCommand(name){await editor.locator('p:last-of-type').click();await page.keyboard.press('Control+End');await page.keyboard.press('Enter');await page.keyboard.type('/'+name);await page.keyboard.press('Enter');const popup=page.getByRole('status',{name:'Four-second '+name+' break'});await popup.waitFor();await popup.locator('img').evaluate(image=>image.decode());return popup;}
+  async function breakCommand(name){await editor.focus();await page.keyboard.press('Control+End');await page.keyboard.press('Enter');await page.keyboard.type('/'+name);await page.keyboard.press('Enter');const popup=page.getByRole('status',{name:'Four-second '+name+' break'});await popup.waitFor();await popup.locator('img').evaluate(image=>image.decode());return popup;}
   const cat=await breakCommand('cat');assert.equal(await page.locator('.animal-confetti').count(),1);assert.ok((await cat.locator('img').getAttribute('src')).includes('/cat/'));await cat.getByRole('button',{name:'Close cat break'}).click();
   const chosen=[];
   for(let i=0;i<3;i++){const jigsaw=await breakCommand('jigsaw');assert.equal(await page.locator('.animal-confetti').count(),0);const src=await jigsaw.locator('img').getAttribute('src');assert.match(src,/\/jigsaw\/(?:spotlight|portrait|tiny|strawberries)\.jpg$/);if(i)assert.notEqual(src,chosen.at(-1),'Consecutive breaks must choose different images');chosen.push(src);if(i<2)await jigsaw.getByRole('button',{name:'Close jigsaw break'}).click();else await jigsaw.waitFor({state:'hidden',timeout:6000});}
