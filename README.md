@@ -8,7 +8,7 @@ The original Linea repository is separate and unchanged.
 
 ### 0.6.0 notes, link controls, and command breaks
 
-**Notes** in the outline opens a full-size private sheet for the current project. It shares the research desk notebook, autosaves with the project, and stays outside manuscript word counts and submission exports. Existing notebook notes carry over.
+**Notes** in the outline opens a full-size private sheet for the current project. **Research desk → Notes** lets you read and edit the same text in Write or Read view. Use **Open full page** or **Open in research desk** to switch between them. Notes autosave with the project and stay outside manuscript word counts and submission exports. **Workspace appearance → Typing sounds** applies Linea’s Soft click to the manuscript and both notes views.
 
 Click an embedded link to see a compact URL popover with **Open**, **Edit**, and **Remove** controls. Removing a link keeps its writing and formatting and supports Undo. Figure tools now include **Delete figure**, also reversible with Undo.
 
