@@ -12,12 +12,39 @@ import {pageFlow,editorRegistry} from './pagination';
 import {editableQuotes,syncQuotationText} from './lib/editable-quotes';
 import SlashCommandMenu from './slash-command-menu';
 import {grammarExtension} from './grammar';
-function PaperEditor({section,actions,readOnly=false,onSpelling}:{section:Section;actions:AcademicActions;readOnly?:boolean;onSpelling:(selection:SpellingSelection)=>void}){
+import { typingSoundEvents } from './lib/typing-sound';
+import type { WritingActivity } from './lib/writing-activity';
+
+type PaperEditorProps = {
+  paperId: string;
+  section: Section;
+  actions: AcademicActions;
+  activity: WritingActivity;
+  typingSound: boolean;
+  readOnly?: boolean;
+  onSpelling: (selection: SpellingSelection) => void;
+};
+
+function PaperEditor({paperId,section,actions,activity,typingSound,readOnly=false,onSpelling}:PaperEditorProps){
   const epoch=useWorkspace(s=>s.epoch);
   const latest=useRef(actions);latest.current=actions;
   const callbacks=useMemo<AcademicActions>(()=>({command:(...args)=>latest.current.command(...args),annotation:(...args)=>latest.current.annotation(...args),source:(...args)=>latest.current.source(...args),editObject:(...args)=>latest.current.editObject(...args),activate:(...args)=>latest.current.activate(...args),grammar:(...args)=>latest.current.grammar?.(...args),link:selection=>latest.current.link?.(selection)}),[]);
   const initialContent=useMemo(()=>editableQuotes(section.content),[section.id,epoch]);
-  const editor=useEditor({immediatelyRender:false,shouldRerenderOnTransaction:false,extensions:[StarterKit.configure({heading:{levels:[1,2,3]},link:{openOnClick:false}}),Placeholder.configure({placeholder:'Start writing…'}),...academicExtensions(callbacks),pageFlow,spellingExtension(onSpelling),grammarExtension(selection=>callbacks.grammar?.(selection)),Extension.create({name:'lineaKeys',addKeyboardShortcuts(){return{'Alt-t':()=>this.editor.commands.setHeading({level:1}),'Alt-p':()=>this.editor.commands.setParagraph(),'Alt-h':()=>this.editor.commands.setHeading({level:2}),'Mod-Shift-t':()=>this.editor.commands.setHeading({level:1}),'Mod-Shift-p':()=>this.editor.commands.setParagraph(),'Mod-Shift-h':()=>this.editor.commands.setHeading({level:2})};}})],content:initialContent,editable:!readOnly,editorProps:{attributes:{class:'academic-editor','data-section-id':section.id,'aria-label':'Write '+section.title,spellcheck:'false'}},onUpdate:({editor})=>useWorkspace.getState().updateSection(section.id,syncQuotationText(editor.getJSON() as any)),onFocus:({editor})=>callbacks.activate(editor)},[section.id,epoch]);
+  const soundEnabled = useRef(false);
+  soundEnabled.current = typingSound && !readOnly;
+  const soundEvents = useMemo(() => typingSoundEvents(() => soundEnabled.current), []);
+  const editor=useEditor({
+    immediatelyRender:false,shouldRerenderOnTransaction:false,
+    extensions:[StarterKit.configure({heading:{levels:[1,2,3]},link:{openOnClick:false}}),Placeholder.configure({placeholder:'Start writing…'}),...academicExtensions(callbacks),pageFlow,spellingExtension(onSpelling),grammarExtension(selection=>callbacks.grammar?.(selection)),Extension.create({name:'lineaKeys',addKeyboardShortcuts(){return{'Alt-t':()=>this.editor.commands.setHeading({level:1}),'Alt-p':()=>this.editor.commands.setParagraph(),'Alt-h':()=>this.editor.commands.setHeading({level:2}),'Mod-Shift-t':()=>this.editor.commands.setHeading({level:1}),'Mod-Shift-p':()=>this.editor.commands.setParagraph(),'Mod-Shift-h':()=>this.editor.commands.setHeading({level:2})};}})],
+    content:initialContent,editable:!readOnly,
+    editorProps:{attributes:{class:'academic-editor','data-section-id':section.id,'aria-label':'Write '+section.title,spellcheck:'false'},handleDOMEvents:soundEvents},
+    onUpdate:({editor})=>useWorkspace.getState().updateSection(section.id,syncQuotationText(editor.getJSON() as any)),
+    onFocus:({editor})=>callbacks.activate(editor),
+    onBlur:()=>{void activity.flush();},
+    onTransaction:({editor,transaction})=>{
+      if(editor.isEditable&&useWorkspace.getState().paper?.id===paperId)activity.record(paperId,section,transaction,editor.state.doc);
+    }
+  },[paperId,section.id,epoch]);
 
   useEffect(()=>{editor?.setEditable(!readOnly);},[editor,readOnly]);
   useEffect(()=>{if(!editor)return;const migrated=syncQuotationText(editor.getJSON() as any);if(JSON.stringify(migrated)!==JSON.stringify(section.content))useWorkspace.getState().updateSection(section.id,migrated);editorRegistry.set(section.id,editor);return()=>{if(editorRegistry.get(section.id)===editor)editorRegistry.delete(section.id);};},[editor,section.id]);

@@ -3,6 +3,7 @@ import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {Window} from 'happy-dom';
 import {indexedDB,IDBKeyRange} from 'fake-indexeddb';
 import 'fake-indexeddb/auto';
+import {openDB} from 'idb';
 import nspell from 'nspell';
 import {Editor} from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
@@ -21,6 +22,7 @@ import {academicDecorationKey} from '../src/editor-decorations';
 import {spellingBlocks,verifiedQuotationRanges} from '../src/lib/editor-analysis';
 import {useWorkspace} from '../src/lib/store';
 import {storageFor} from '../src/lib/storage';
+import {createWritingActivity,playbackText} from '../src/lib/writing-activity';
 import {sourceIdentifier,crossrefSource,importSource,sourceFromJATS,retrieveSourceText} from '../src/lib/source-import';
 import {matchQuotation,normalizeQuotation,pastedQuotation,quotationBefore} from '../src/lib/quote-match';
 import {printedPageLabels,findDOI} from '../src/lib/pdf-source';
@@ -140,6 +142,65 @@ editor.commands.setContent('<p>Keep this writing. </p>');editor.commands.setText
 test('Jigsaw is searchable and consumes its command without adding media to the paper',()=>{assert.equal(commandCalls.at(-1),'jigsaw');assert.equal(editor.getText(),'Keep this writing. ');assert.deepEqual(filterSlashCommands('jigsaw').map(command=>command.name),['jigsaw']);assert.ok(!JSON.stringify(editor.getJSON()).includes('image'));});
 editor.commands.setContent('<p>Existing writing. </p>');editor.commands.setTextSelection(editor.state.doc.content.size-1);const paste='A copied section with enough words to cite.';editor.view.pasteText(paste,{clipboardData:{getData:(kind:string)=>kind==='text/plain'?paste:''}} as any);await new Promise<void>(r=>queueMicrotask(r));test('Native ProseMirror paste prompts a citation after inserting the passage',()=>{assert.equal(quotationCalls.at(-1)?.quote,paste);assert.equal(editor.state.doc.textBetween(quotationCalls.at(-1)!.range.from,quotationCalls.at(-1)!.range.to),paste);assert.ok(editor.getText().includes('Existing writing.'));});
 editor.destroy();
+const activityPaper = createPaper();
+const activityScope = 'unit-writing-activity';
+const oldCache = await openDB('academica-account-' + activityScope, 1, {upgrade(db) {
+  db.createObjectStore('papers', {keyPath: 'paper.id'});
+  db.createObjectStore('revisions', {keyPath: 'id'});
+  db.createObjectStore('preferences');
+}});
+await oldCache.put('papers', {paper: activityPaper, revision: 0, dirty: false});
+await oldCache.put('preferences', activityPaper.id, 'active-paper');
+oldCache.close();
+const activityStorage = storageFor(activityScope);
+let holdActivityWrite = Promise.resolve();
+const recorder = createWritingActivity({
+  ...activityStorage,
+  async saveWritingActivity(entry) {
+    await holdActivityWrite;
+    await activityStorage.saveWritingActivity(entry);
+  }
+}, activityScope);
+const activityEditor = new Editor({
+  element: document.createElement('div'), extensions: [StarterKit], content: '<p>Draft</p>',
+  onTransaction: ({editor, transaction}) => recorder.record(activityPaper.id, activityPaper.sections[0], transaction, editor.state.doc)
+});
+activityEditor.commands.insertContentAt(6, ' one');
+activityEditor.commands.insertContentAt(10, ' two');
+activityEditor.commands.setTextSelection({from: 7, to: 14});
+activityEditor.view.pasteText('copied passage', new win.ClipboardEvent('paste') as unknown as ClipboardEvent);
+activityEditor.commands.selectAll();
+activityEditor.commands.toggleBold();
+const {entries: activityEntries} = await recorder.read(activityPaper.id);
+const reopenedActivity = storageFor(activityScope);
+const reopenedEntries = await reopenedActivity.localWritingActivity(activityPaper.id);
+const otherAccountEntries = await storageFor('unit-other-account').localWritingActivity(activityPaper.id);
+const oldActivePaper = await reopenedActivity.pref('active-paper');
+test('Writing activity upgrades existing storage, groups nearby edits and counts words in a replacement paste', () => {
+  assert.equal(oldActivePaper, activityPaper.id);
+  assert.deepEqual(activityEntries.map(entry => entry.pastedWords), [undefined, 2]);
+  assert.deepEqual(activityEntries.map(playbackText), [['Draft', 'Draft one two'], ['Draft one two', 'Draft copied passage']]);
+  assert.deepEqual(reopenedEntries, activityEntries);
+  assert.deepEqual(otherAccountEntries, []);
+});
+let finishActivityWrite = () => {};
+holdActivityWrite = new Promise<void>(resolve => { finishActivityWrite = resolve; });
+activityEditor.commands.insertContentAt(activityEditor.state.doc.content.size - 1, '!');
+recorder.suspend();
+const recovery = await createWritingActivity(reopenedActivity, activityScope).read(activityPaper.id);
+finishActivityWrite();
+await recorder.flush();
+const afterRecovery = await reopenedActivity.localWritingActivity(activityPaper.id);
+test('Writing playback recovers a pending edit after reload without saving it twice', () => {
+  assert.equal(recovery.entries.length, 3);
+  assert.deepEqual(playbackText(recovery.entries[2]), ['Draft copied passage', 'Draft copied passage!']);
+  assert.deepEqual(afterRecovery, recovery.entries);
+});
+activityEditor.destroy();
+await reopenedActivity.deleteLocalPaper(activityPaper.id);
+await activityStorage.saveWritingActivity(activityEntries[0]);
+const deletedEntries = await reopenedActivity.localWritingActivity(activityPaper.id);
+test('Deleting a paper removes writing activity and ignores late writes for that paper', () => assert.deepEqual(deletedEntries, []));
 const formatEditor=new Editor({element:document.createElement('div'),extensions:[StarterKit,...academicExtensions(actions)],content:'<p>Read the study now.</p>'});
 test('Ctrl/Cmd K opens link editing with the selected writing range',()=>{formatEditor.commands.setTextSelection({from:6,to:15});formatEditor.view.someProp('handleKeyDown',handler=>handler(formatEditor.view,new win.KeyboardEvent('keydown',{key:'k',code:'KeyK',keyCode:75,ctrlKey:true}) as any));assert.equal(commandCalls.at(-1),'link');assert.deepEqual(quotationCalls.at(-1)?.range,{from:6,to:15});});
 test('Links use readable labels, preserve surrounding writing, and stop at their boundary',()=>{assert.equal(applyEditorLink(formatEditor,{from:6,to:15},'Study details','example.org/paper'),true);assert.equal(formatEditor.getText(),'Read Study details now.');formatEditor.commands.setTextSelection(10);assert.deepEqual(editorLinkTarget(formatEditor,{from:10,to:10}),{range:{from:6,to:19},text:'Study details',href:'https://example.org/paper'});assert.ok(formatEditor.getHTML().includes('href="https://example.org/paper"'));formatEditor.commands.setTextSelection(formatEditor.state.doc.content.size-1);formatEditor.commands.insertContent(' More.');assert.equal(formatEditor.state.doc.nodeAt(formatEditor.state.doc.content.size-2)?.marks.some(m=>m.type.name==='link'),false);});

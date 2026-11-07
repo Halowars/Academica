@@ -1,0 +1,14 @@
+.modal .typing-sound-control {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 44px;
+  margin: 0;
+  padding: 7px 11px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.typing-sound-control small { display: block; margin-top: 3px; color: var(--muted); }
+.typing-sound-control input[type='checkbox'] { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); }
