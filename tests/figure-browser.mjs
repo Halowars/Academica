@@ -74,7 +74,7 @@ try{
   assert.equal(await slider.inputValue(),'35');assert.equal(await page.getByRole('button',{name:'Text beside',exact:true}).getAttribute('aria-pressed'),'true');
   await page.getByRole('button',{name:'Delete figure',exact:true}).click();await tools.waitFor({state:'hidden'});
   assert.equal(await editor.locator('.figure-object').count(),0);assert.ok((await editor.innerText()).includes('WRAPPED EDIT'));
-  await page.getByRole('button',{name:'Undo',exact:true}).click();await image.waitFor();
+  await editor.press('Control+z');await image.waitFor();
   await page.getByRole('button',{name:'Edit figure',exact:true}).click();await tools.waitFor();
   await page.getByRole('button',{name:'Done',exact:true}).click();
   await editor.getByRole('link',{name:'Further reading',exact:true}).click();await linkOptions.waitFor();
@@ -157,3 +157,4 @@ try{
   await mkdir('work/figure-proof',{recursive:true});await page.screenshot({path:'work/figure-proof/failure.png',fullPage:true}).catch(()=>{});
   throw error;
 }finally{await browser.close();}
+
