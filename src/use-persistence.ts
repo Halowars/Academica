@@ -1,13 +1,28 @@
 'use client';
-import { useEffect,useRef,useState } from 'react';
+import { useEffect,useMemo,useRef,useState } from 'react';
 import { useWorkspace } from './lib/store';
 import { createPaper,validatePaper,uid,type Paper,type PaperSummary,type Revision } from './lib/model';
 import {storageFor,type LocalPaper} from './lib/storage';
+import {createWritingActivity} from './lib/writing-activity';
 import {cloudRequest} from './lib/firebase';
 export const api=cloudRequest;
 export function usePersistence(user:{name:string;id:string}|null){
   const api=<T=any>(path:string,options?:RequestInit)=>cloudRequest<T>(path,{...options,headers:{...options?.headers,'X-Academica-Owner':user?.id||''}});
-  const {localPapers,saveLocal,setLocalTrash,deleteLocalPaper,localRevisions,saveLocalRevision,pref}=storageFor(user?.id||'device');
+  const scope = user?.id || 'device';
+  const storage = useMemo(() => storageFor(scope), [scope]);
+  const {localPapers,saveLocal,setLocalTrash,deleteLocalPaper,localRevisions,saveLocalRevision,pref}=storage;
+  const activity = useMemo(() => createWritingActivity(storage, scope), [storage, scope]);
+  useEffect(() => {
+    void activity.recover();
+    const whenHidden = () => { if (document.visibilityState === 'hidden') activity.suspend(); };
+    document.addEventListener('visibilitychange', whenHidden);
+    window.addEventListener('pagehide', activity.suspend);
+    return () => {
+      document.removeEventListener('visibilitychange', whenHidden);
+      window.removeEventListener('pagehide', activity.suspend);
+      activity.suspend();
+    };
+  }, [activity]);
   const paper=useWorkspace(s=>s.paper),generation=useWorkspace(s=>s.generation);
   const [ready,setReady]=useState(false),[status,setStatus]=useState('Opening your workspace…'),[catalog,setCatalog]=useState<PaperSummary[]>([]),[conflict,setConflict]=useState(false);
   const revisions=useRef<Record<string,number>>({}),synced=useRef<Record<string,string>>({}),pending=useRef(new Map<string,Paper>()),busy=useRef(false),blocked=useRef(new Set<string>()),trashed=useRef(new Set<string>()),latest=useRef<Paper|null>(null);
@@ -53,5 +68,5 @@ export function usePersistence(user:{name:string;id:string}|null){
   async function restore(revision:Revision){const value=revision.paper||validatePaper((await api('/api/revisions?id='+encodeURIComponent(revision.id))).paper);await saveRevision('Before restoring '+revision.name);useWorkspace.getState().edit(current=>{Object.assign(current,structuredClone(value),{id:current.id,updatedAt:new Date().toISOString()});});useWorkspace.setState(s=>({epoch:s.epoch+1}));}
   async function keepBoth(){const value=latest.current;if(!value)return;const clone=structuredClone(value);clone.id=uid();clone.title+=' — device copy';clone.createdAt=new Date().toISOString();clone.updatedAt=clone.createdAt;await add(clone);}
   async function reloadCloud(){const value=latest.current;if(!value)return;await saveRevision('Before loading cloud version');const cloud=await api('/api/papers/'+encodeURIComponent(value.id));blocked.current.delete(value.id);revisions.current[value.id]=cloud.revision;synced.current[value.id]=cloud.paper.updatedAt;useWorkspace.getState().setPaper(validatePaper(cloud.paper),cloud.revision);await saveLocal({paper:cloud.paper,revision:cloud.revision,dirty:false});setConflict(false);setStatus('Saved to cloud');}
-  return{ready,status,catalog,conflict,load,add,trash,restoreTrash,deleteForever,saveRevision,getRevisions,restore,keepBoth,reloadCloud};
+  return{ready,status,catalog,conflict,load,add,trash,restoreTrash,deleteForever,saveRevision,getRevisions,restore,keepBoth,reloadCloud,activity};
 }

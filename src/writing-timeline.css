@@ -1,0 +1,78 @@
+.writing-timeline {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: 28px;
+}
+
+.writing-timeline h2, .saved-revisions-heading {
+  margin: 0 0 7px;
+  font: 22px/1.3 Georgia, serif;
+}
+
+.writing-timeline-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.writing-playback, .writing-timeline-events { min-width: 0; }
+.writing-playback h3 { margin: 0 0 4px; font-size: 14px; }
+.writing-playback .form-hint { margin: 0 0 9px; }
+.writing-timeline-empty { margin: 14px 0 0; color: var(--muted); }
+
+.writing-playback-controls {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 12px;
+}
+
+.writing-playback-controls .button { min-height: 44px; }
+.writing-playback-controls input { min-width: 0; min-height: 44px; flex: 1; accent-color: var(--accent); }
+.writing-playback-controls > span { color: var(--muted); font-size: 11px; white-space: nowrap; }
+
+.writing-playback-text {
+  min-height: 5rem;
+  max-height: 14rem;
+  overflow: auto;
+  padding: 12px 14px;
+  border-radius: 5px;
+  background: var(--paper);
+  color: var(--paper-ink);
+  font: 15px/1.6 var(--editor-font);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.writing-timeline-events {
+  list-style: none;
+  padding: 0 4px 0 0;
+  margin: 0;
+  max-height: 18rem;
+  overflow: auto;
+}
+
+.writing-timeline-events li + li { margin-top: 4px; }
+.writing-timeline-events button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 9px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  text-align: left;
+}
+
+.writing-timeline-events button:hover { background: var(--wash); }
+.writing-timeline-events button[aria-current] { background: var(--wash); border-color: var(--accent); }
+.writing-timeline-events button > svg { color: var(--accent); }
+.writing-timeline-events strong { display: block; font-size: 12px; font-weight: 500; }
+.writing-timeline-events small, .writing-timeline-events time { color: var(--muted); font-size: 11px; }
+.writing-timeline-events small { display: block; overflow-wrap: anywhere; }
+.writing-timeline-events time { text-align: right; white-space: nowrap; }
+.writing-timeline-events time span { display: block; }
