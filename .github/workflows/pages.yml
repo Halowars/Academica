@@ -51,13 +51,17 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-24.04
+    timeout-minutes: 25
     needs: build
     steps:
       - name: Deploy static website
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          # File syncing has exceeded the action's default ten-minute limit.
+          timeout: 1200000
   verify-firebase:
-    name: Verify matching Firebase release
+    name: Verify published releases
     if: github.ref == 'refs/heads/main'
     needs: [build, deploy]
     runs-on: ubuntu-24.04
@@ -70,4 +74,7 @@ jobs:
         with:
           name: academica-release-metadata
           path: dist
-      - run: node scripts/verify-hosting.mjs https://academica-writer.web.app/
+      - name: Verify GitHub Pages release
+        run: node scripts/verify-hosting.mjs https://halowars.github.io/Academica/
+      - name: Verify matching Firebase release
+        run: node scripts/verify-hosting.mjs https://academica-writer.web.app/
