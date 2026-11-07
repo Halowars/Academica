@@ -85,15 +85,15 @@ try{
   await page.screenshot({path:'work/figure-proof/notes-narrow.png',fullPage:true});
   await page.getByRole('button',{name:'Manuscript',exact:true}).click();await editor.waitFor();
   await page.setViewportSize({width:1440,height:1000});await wait(500);
-  await editor.click();await page.keyboard.press('Control+End');await page.keyboard.press('Enter');await page.keyboard.type('/figure');await page.keyboard.press('Enter');
+  await editor.locator('p:last-of-type').click({position:{x:30,y:10}});await page.keyboard.press('Control+End');await page.keyboard.press('Enter');await page.keyboard.type('/figure');await page.keyboard.press('Enter');
   await tools.waitFor();
   await page.getByLabel('Figure image',{exact:true}).setInputFiles({name:'test-figure.png',mimeType:'image/png',buffer:Buffer.from(pixel.split(',')[1],'base64')});
   await page.waitForFunction(()=>document.querySelectorAll('.figure-object img').length===2);
-  const newImage=editor.locator('.figure-object img').nth(1),newInitial=(await newImage.boundingBox()).width;
+  await page.getByRole('textbox',{name:'Figure caption',exact:true}).fill('New figure caption');
+  const newImage=editor.getByRole('img',{name:'New figure caption',exact:true});await newImage.waitFor();const newInitial=(await newImage.boundingBox()).width;
   await slider.evaluate(input=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'40');input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));});
   await wait(400);assert.ok((await newImage.boundingBox()).width<newInitial*.6,'A new /figure must resize on the actual paper before Done');
   await page.getByRole('button',{name:'Text beside',exact:true}).click();
-  await page.getByRole('textbox',{name:'Figure caption',exact:true}).fill('New figure caption');
   await page.getByRole('button',{name:'Done',exact:true}).click();await tools.waitFor({state:'hidden'});
   assert.equal(await editor.locator('.figure-object').count(),2);
   assert.ok(!(await editor.innerText()).includes('/figure'),'The slash command must disappear after inserting the image');
