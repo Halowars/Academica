@@ -151,6 +151,13 @@ test('Clicking a formatted link previews its whole URL without editing the words
   const anchor=linkEditor.view.dom.querySelector('a')!,event=new win.MouseEvent('click',{bubbles:true,cancelable:true}),before=JSON.stringify(linkEditor.getJSON());Object.defineProperty(event,'target',{value:anchor});linkEditor.view.someProp('handleClick',handler=>handler(linkEditor.view,8,event as any));
   assert.ok(clickedLink);assert.equal(clickedLink.element,anchor);assert.deepEqual(clickedLink.range,{from:6,to:19});assert.equal(linkEditor.state.selection.from,8);assert.equal(JSON.stringify(linkEditor.getJSON()),before);assert.equal(event.defaultPrevented,true);
 });
+test('Fast repeat clicks reopen link options without consuming native word or paragraph selection',()=>{
+  for(const prop of ['handleDoubleClick','handleTripleClick'] as const){
+    clickedLink=undefined;const anchor=linkEditor.view.dom.querySelector('a')!,event=new win.MouseEvent('mousedown',{bubbles:true,cancelable:true}),selection=linkEditor.state.selection;
+    Object.defineProperty(event,'target',{value:anchor});linkEditor.view.someProp(prop,handler=>handler(linkEditor.view,8,event as any));
+    const selected=clickedLink as LinkSelection|undefined;assert.ok(selected);assert.deepEqual(selected.range,{from:6,to:19});assert.equal(linkEditor.state.selection,selection);assert.equal(event.defaultPrevented,false);
+  }
+});
 test('Removing a link keeps its display text and formatting and can be undone',()=>{
   assert.ok(clickedLink);assert.equal(removeEditorLink(linkEditor,clickedLink.range),true);assert.equal(linkEditor.getText(),'Read study details now.');assert.ok(linkEditor.getHTML().includes('<strong>study</strong>'));assert.ok(!linkEditor.getHTML().includes('<a '));assert.equal(linkEditor.commands.undo(),true);assert.ok(linkEditor.getHTML().includes('https://example.org/paper'));
 });linkEditor.destroy();
