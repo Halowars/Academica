@@ -46,7 +46,7 @@ import {figurePosition,removeFigure} from '../src/lib/figure-editor';
 import {grammarBlocks} from '../src/lib/grammar-analysis';
 import {checkGrammar} from '../src/lib/grammar-engine';
 import {LocalLinter} from 'harper.js';
-import {binary as grammarBinary} from 'harper.js/binary';
+import {binaryInlined as grammarBinary} from 'harper.js/binaryInlined';
 const win=new Window({url:'https://halowars.github.io/Academica/'});
 for(const key of ['window','document','DOMParser','Node','Element','HTMLElement','HTMLAnchorElement','Text','MutationObserver','ResizeObserver','KeyboardEvent','navigator','getComputedStyle','requestAnimationFrame','cancelAnimationFrame'] as const){const value=key==='window'?win:key==='getComputedStyle'?win.getComputedStyle.bind(win):key==='requestAnimationFrame'?win.requestAnimationFrame.bind(win):key==='cancelAnimationFrame'?win.cancelAnimationFrame.bind(win):(win as any)[key];Object.defineProperty(globalThis,key,{value,configurable:true,writable:true});}
 Object.assign(globalThis,{indexedDB,IDBKeyRange});
@@ -66,7 +66,25 @@ test('Only cited sources enter the bibliography',()=>{const extra=emptySource();
 test('Private note and checklist text stays out of submission output',()=>{const html=bodyHTML(p);for(const a of Object.values(p.annotations)){if(a.text)assert.ok(!html.includes(a.text));a.tasks.forEach(t=>assert.ok(!html.includes(t.text)));}assert.ok(!html.includes('data-annotation-id'));assert.ok(bodyHTML(p,true).includes('data-annotation-id'));});
 test('Custom references survive style changes and escape markup',()=>{const next=structuredClone(p);next.sources[0].overrides={apa:'Custom <entry>'};assert.match(formatPaper(next).bibliography[0].html,/Custom &lt;entry&gt;/);assert.doesNotMatch(formatPaper({...next,style:'mla'}).bibliography[0].html,/Custom/);});
 test('Project validation preserves structured writing',()=>assert.deepEqual(validatePaper(p).sections,p.sections));
-test('The APA introduction keeps only its edit control in the full manuscript without changing exported heading rules',()=>{const paper=createPaper(),section=paper.sections[0];const html=renderToStaticMarkup(createElement(SectionHeading,{paper,section,editorLabel:true,onEdit:()=>{}}));assert.ok(html.includes('<h2>Introduction</h2>'));assert.ok(html.includes('editor-section-heading'));assert.ok(html.includes('Edit Introduction section'));assert.ok(!bodyHTML(paper).includes('<h2>Introduction</h2>'));assert.ok(bodyHTML(paper,false,section.id).includes('<h2>Introduction</h2>'));});
+test('The APA Introduction heading appears once in the writer, full paper, focused section, and print output',()=>{
+  const paper=createPaper(),section=paper.sections[0],heading='<h2>Introduction</h2>';
+  const writer=renderToStaticMarkup(createElement(SectionHeading,{paper,section,onEdit:()=>{}}));
+  for(const html of [writer,bodyHTML(paper),bodyHTML(paper,false,section.id)])assert.equal(html.split(heading).length-1,1);
+  assert.ok(!writer.includes('editor-section-heading'));
+  assert.ok(writer.includes('Edit Introduction section'));
+  assert.ok(printHTML(paper).includes('\\u003ch2>Introduction\\u003c/h2>'));
+});
+test('Numbered Introduction headings retain their label after an Abstract in full and focused output',()=>{
+  const paper=createPaper();paper.format={numberSections:true};
+  paper.sections.unshift({id:'heading-abstract',title:'Abstract',kind:'abstract',content:{type:'doc',content:[{type:'paragraph'}]}});
+  const section=paper.sections[1],heading='<h2>1. Introduction</h2>',html=bodyHTML(paper);
+  assert.equal(html.split(heading).length-1,1);
+  assert.ok(html.indexOf('<h2>Abstract</h2>')<html.indexOf('body-title'));
+  assert.ok(html.indexOf('body-title')<html.indexOf(heading));
+  assert.ok(html.indexOf(heading)<html.indexOf('<h2>2. Methods</h2>'));
+  assert.ok(bodyHTML(paper,false,section.id).includes(heading));
+  assert.ok(renderToStaticMarkup(createElement(SectionHeading,{paper,section,onEdit:()=>{}})).includes(heading));
+});
 test('Focused sections retain their own title, writing, and original numbering without unrelated title pages or sections',()=>{const paper=createPaper();paper.format={numberSections:true};paper.sections[0].content={type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'Introduction content marker.'}]}]};paper.sections[1].content={type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'Methods content marker.'}]}]};const html=bodyHTML(paper,false,paper.sections[1].id);assert.ok(html.includes('<h2>2. Methods</h2>'));assert.ok(html.includes('Methods content marker.'));assert.ok(!html.includes('Introduction content marker.'));assert.ok(!html.includes('body-title'));assert.ok(!printHTML(paper,{sectionId:paper.sections[1].id}).includes('class=\\"title-page\\"'));assert.deepEqual(paper.sections.map(s=>s.title),['Introduction','Methods']);});
 test('Active markup is rejected on import',()=>assert.throws(()=>validatePaper({...p,sections:[{id:'unsafe',title:'Unsafe',content:{type:'script'}}]})));
 test('The ScienceDirect link resolves to its exact PII identifier',()=>assert.equal(sourceIdentifier('https://www.sciencedirect.com/science/article/abs/pii/S0254058401005752').pii,'S0254058401005752'));
@@ -256,6 +274,19 @@ test('Print content safely escapes closing-script sequences',()=>{const next=str
 const blobs:Blob[]=[];const originalURL=URL.createObjectURL;URL.createObjectURL=blob=>{blobs.push(blob as Blob);return originalURL(blob);};win.HTMLAnchorElement.prototype.click=function(){};
 await exportWord({...p,researchNotes:'PRIVATE_NOTE_WORD_EXPORT'});await mkdir('work',{recursive:true});await writeFile('work/export-smoke.docx',new Uint8Array(await blobs.at(-1)!.arrayBuffer()));test('Word export produces a valid ZIP-based document',()=>assert.equal(blobs.at(-1)!.type,'application/vnd.openxmlformats-officedocument.wordprocessingml.document'));
 const privateNotesWord=unzipSync(new Uint8Array(await blobs.at(-1)!.arrayBuffer()));test('A private note sheet is excluded from Word output',()=>assert.ok(!strFromU8(privateNotesWord['word/document.xml']).includes('PRIVATE_NOTE_WORD_EXPORT')));
+test('Word exports the APA Introduction once as a real section heading before its writing',()=>{
+  const xml=new DOMParser().parseFromString(strFromU8(privateNotesWord['word/document.xml']),'application/xml'),paragraphs=Array.from(xml.getElementsByTagName('w:p'));
+  const headings=paragraphs.filter(p=>p.getElementsByTagName('w:pStyle')[0]?.getAttribute('w:val')==='Heading1');
+  assert.deepEqual(headings.map(p=>p.textContent),['Introduction','Methods']);
+  assert.ok(paragraphs.indexOf(headings[0])<paragraphs.findIndex(p=>p.textContent?.includes('This proposed study will evaluate water and energy use')));
+});
+const numberedHeadingPaper=createPaper();numberedHeadingPaper.format={numberSections:true};numberedHeadingPaper.sections.unshift({id:'word-heading-abstract',title:'Abstract',kind:'abstract',content:{type:'doc',content:[{type:'paragraph'}]}});
+await exportWord(numberedHeadingPaper);const numberedHeadingWord=unzipSync(new Uint8Array(await blobs.at(-1)!.arrayBuffer()));
+test('Word keeps Introduction numbering and front-matter order in APA papers',()=>{
+  const xml=new DOMParser().parseFromString(strFromU8(numberedHeadingWord['word/document.xml']),'application/xml');
+  const headings=Array.from(xml.getElementsByTagName('w:p')).filter(p=>p.getElementsByTagName('w:pStyle')[0]?.getAttribute('w:val')==='Heading1');
+  assert.deepEqual(headings.map(p=>p.textContent),['Abstract','1. Introduction','2. Methods']);
+});
 await exportWord(formattedPaper);const linkedWordFiles=unzipSync(new Uint8Array(await blobs.at(-1)!.arrayBuffer()));test('Word preserves true hanging indents and clickable links with readable labels',()=>{const document=strFromU8(linkedWordFiles['word/document.xml']),relationships=strFromU8(linkedWordFiles['word/_rels/document.xml.rels']);assert.ok(document.includes('w:left="720"'));assert.ok(document.includes('w:hanging="720"'));assert.ok(document.includes('<w:hyperlink'));assert.ok(document.includes('Study details'));assert.ok(relationships.includes('Target="https://example.org/paper"'));});URL.createObjectURL=originalURL;
 test('Wrapped figures preserve safe text-flow settings in backups, reading, and print',()=>{
   const paper=structuredClone(figurePaper),attrs=paper.sections[0].content.content![0].attrs!;
@@ -305,7 +336,7 @@ try{
 test('Every added CSL profile produces citations and bibliography entries',()=>{for(const style of ['chicago','ieee','vancouver','ama'] as const){const paper={...p,style},out=formatPaper(paper);assert.ok(out.bibliography.length);assert.ok(Object.values(out.inline).every(text=>!text.includes('needs review')));assert.equal(validatePaper(paper).style,style);}});
 test('Physical paper settings are bounded and saved separately from appearance',()=>{const paper={...p,format:{...defaultFormat('apa'),size:100,margin:-1,lineHeight:1.5}};const restored=validatePaper(paper);assert.equal(documentFormat(restored).size,24);assert.equal(documentFormat(restored).margin,.5);assert.equal(documentFormat(restored).lineHeight,1.5);assert.ok(formatDifferences(restored).includes('lineHeight'));});
 test('Printer zero-margins are not part of the parsed manuscript CSS',()=>{const css=paperCSS(p);assert.ok(css.includes('margin:1in'));assert.ok(!css.includes('@media print'));const html=printHTML(p);assert.ok(html.indexOf("const printStyle")>html.indexOf('new Paged.Previewer()'));assert.ok(html.includes('data-editor-section'));});
-test('Abstract precedes the repeated body title without an empty title-only body page',()=>{const paper=structuredClone(p);paper.sections.unshift({id:'abstract-role',title:'Abstract',kind:'abstract',content:{type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'ABSTRACT TEST TEXT'}]}]}});const html=bodyHTML(paper);assert.ok(html.indexOf('ABSTRACT TEST TEXT')<html.indexOf('body-title'));assert.ok(!html.includes('<h2>Introduction</h2>'));assert.equal((html.match(/body-title/g)||[]).length,1);});
+test('Abstract precedes the repeated body title and Introduction without an empty title-only body page',()=>{const paper=structuredClone(p);paper.sections.unshift({id:'abstract-role',title:'Abstract',kind:'abstract',content:{type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'ABSTRACT TEST TEXT'}]}]}});const html=bodyHTML(paper);assert.ok(html.indexOf('ABSTRACT TEST TEXT')<html.indexOf('body-title'));assert.ok(html.indexOf('body-title')<html.indexOf('<h2>Introduction</h2>'));assert.equal((html.match(/body-title/g)||[]).length,1);});
 test('A quotation highlight maps ligatures and PDF wraps back to exact original offsets',()=>{const source={...emptySource(),passages:[{id:'offset',text:'Before: The ﬁrst electro-\nchromic sample was “stable”. After.',paragraph:3}]};const found=quotationOccurrences(source,'The first electrochromic sample was "stable"');assert.equal(found.length,1);const part=found[0].parts[0];assert.equal(source.passages[0].text.slice(part.from,part.to),'The ﬁrst electro-\nchromic sample was “stable”');});
 test('Canonical Unicode accents match without corrupting source offsets',()=>{const index=quotationIndex('A cafe\u0301 sample');assert.equal(index.text,'A café sample');const at=index.text.indexOf('é');assert.equal('A cafe\u0301 sample'.slice(index.map[at].from,index.map[at].to),'e\u0301');});
 test('Repeated and cross-paragraph matches retain every exact occurrence',()=>{const source={...emptySource(),passages:[{id:'a',text:'The observed response remained'},{id:'b',text:'stable throughout testing. The observed response remained stable throughout testing.'}]};const found=quotationOccurrences(source,'The observed response remained stable throughout testing.');assert.equal(found.length,2);assert.equal(found[0].parts.length,2);assert.equal(found[1].passageId,'b');assert.equal(quotationOccurrences(source,'The response was unstable.').length,0);});

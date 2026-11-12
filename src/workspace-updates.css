@@ -56,8 +56,6 @@
 .outline-section-row:focus-within .outline-section-menu,.outline-section-row:hover .outline-section-menu,.outline-section-menu[open]{visibility:visible;}
 .outline-section-menu:focus-within{visibility:visible;}
 .outline-section-row.active .outline-section-menu{visibility:visible;}
-.flow-section-heading.editor-section-heading{height:0;min-height:0;}
-.flow-section-heading.editor-section-heading h2{display:none;}
 .writing-context{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .live-page-status{gap:16px;}
 .live-page-status>span:last-child{flex-shrink:0;}
