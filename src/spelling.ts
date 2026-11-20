@@ -17,8 +17,29 @@ export function addSpellingWord(word:string){start();worker!.postMessage({type:'
 export function ignoreSpellingWord(word:string){start();try{localStorage.setItem(ignoreKey(),JSON.stringify(dictionaryWords([...savedWords(ignoreKey()),word])));}catch{}syncIgnored();listeners.forEach(fn=>fn());}
 export const spellKey=new PluginKey<DecorationSet>('academica-spelling');
 export function spellingExtension(onSelect:(selection:SpellingSelection)=>void){return Extension.create({name:'academicSpelling',addProseMirrorPlugins(){const editor=this.editor;return[new Plugin({key:spellKey,state:{init:()=>DecorationSet.empty,apply(tr,old){const next=tr.getMeta(spellKey);if(next)return next;return old.map(tr.mapping,tr.doc);}},props:{decorations(state){return spellKey.getState(state);},handleClick(view,pos,event){const target=(event.target as HTMLElement).closest('.spell-misspelling') as HTMLElement|null;if(!target)return false;const from=Number(target.dataset.from),to=Number(target.dataset.to),word=target.dataset.word||'';if(view.state.doc.textBetween(from,to)!==word)return false;onSelect({editor,from,to,word,rect:target.getBoundingClientRect()});return true;}},view(view){let timer:ReturnType<typeof setTimeout>|undefined,disposed=false;
-  let pendingJob:number|undefined;const declined=new Set<string>();let lastCorrections:{from:number;to:number;word:string;replacement:string}[]=[];
-  function check(){clearTimeout(timer);if(pendingJob!==undefined)jobs.delete(pendingJob);timer=setTimeout(()=>{if(!ready||disposed)return;const doc=view.state.doc,sources=useWorkspace.getState().paper?.sources||[],blocks=spellingBlocks(doc,sources);const id=++sequence;pendingJob=id;jobs.set(id,data=>{pendingJob=undefined;if(disposed||doc!==view.state.doc||sources!==useWorkspace.getState().paper?.sources||view.composing)return;const corrections=(data.corrections||[]).filter((item:any)=>!declined.has(item.word.toLowerCase()));if(corrections.length){lastCorrections=corrections;const tr=view.state.tr;for(const item of [...corrections].sort((a:any,b:any)=>b.from-a.from))tr.insertText(item.replacement,item.from,item.to);view.dispatch(tr);return;}const decorations=(data.errors||[]).map((item:any)=>Decoration.inline(item.from,item.to,{class:'spell-misspelling','data-from':String(item.from),'data-to':String(item.to),'data-word':item.word,'aria-label':'Spelling: '+item.word}));view.dispatch(view.state.tr.setMeta(spellKey,DecorationSet.create(doc,decorations)).setMeta('addToHistory',false));});worker!.postMessage({type:'check',id,blocks});},500);}
+  let pendingJob:number|undefined;
+  function check(){
+    clearTimeout(timer);
+    if(pendingJob!==undefined)jobs.delete(pendingJob);
+    timer=setTimeout(()=>{
+      if(!ready||disposed)return;
+      const doc=view.state.doc,sources=useWorkspace.getState().paper?.sources;
+      const id=++sequence;
+      pendingJob=id;
+      jobs.set(id,data=>{
+        pendingJob=undefined;
+        if(disposed||doc!==view.state.doc||sources!==useWorkspace.getState().paper?.sources||view.composing)return;
+        const decorations=(data.errors||[]).map((item:{from:number;to:number;word:string})=>
+          Decoration.inline(item.from,item.to,{class:'spell-misspelling','data-from':String(item.from),'data-to':String(item.to),'data-word':item.word,'aria-label':'Spelling: '+item.word}));
+        view.dispatch(view.state.tr.setMeta(spellKey,DecorationSet.create(doc,decorations)).setMeta('addToHistory',false));
+      });
+      worker!.postMessage({type:'check',id,blocks:spellingBlocks(doc,sources||[])});
+    },500);
+  }
   const unsubscribe=useWorkspace.subscribe((next,previous)=>{if(next.paper?.sources!==previous.paper?.sources)check();});
-  start();listeners.add(check);check();return{update(view,previous){if(view.state.doc!==previous.doc){for(const item of lastCorrections){if(item.from+item.replacement.length<=previous.doc.content.size&&item.to<=view.state.doc.content.size&&previous.doc.textBetween(item.from,item.from+item.replacement.length)===item.replacement&&view.state.doc.textBetween(item.from,item.to)===item.word)declined.add(item.word.toLowerCase());}check();}},destroy(){disposed=true;clearTimeout(timer);if(pendingJob!==undefined)jobs.delete(pendingJob);listeners.delete(check);unsubscribe();}};
+  start();listeners.add(check);check();
+  return{
+    update(view,previous){if(view.state.doc!==previous.doc)check();},
+    destroy(){disposed=true;clearTimeout(timer);if(pendingJob!==undefined)jobs.delete(pendingJob);listeners.delete(check);unsubscribe();}
+  };
 }})];}});}

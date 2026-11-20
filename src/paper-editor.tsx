@@ -37,7 +37,7 @@ function PaperEditor({paperId,section,actions,activity,typingSound,readOnly=fals
     immediatelyRender:false,shouldRerenderOnTransaction:false,
     extensions:[StarterKit.configure({heading:{levels:[1,2,3]},link:{openOnClick:false}}),Placeholder.configure({placeholder:'Start writing…'}),...academicExtensions(callbacks),pageFlow,spellingExtension(onSpelling),grammarExtension(selection=>callbacks.grammar?.(selection)),Extension.create({name:'lineaKeys',addKeyboardShortcuts(){return{'Alt-t':()=>this.editor.commands.setHeading({level:1}),'Alt-p':()=>this.editor.commands.setParagraph(),'Alt-h':()=>this.editor.commands.setHeading({level:2}),'Mod-Shift-t':()=>this.editor.commands.setHeading({level:1}),'Mod-Shift-p':()=>this.editor.commands.setParagraph(),'Mod-Shift-h':()=>this.editor.commands.setHeading({level:2})};}})],
     content:initialContent,editable:!readOnly,
-    editorProps:{attributes:{class:'academic-editor','data-section-id':section.id,'aria-label':'Write '+section.title,spellcheck:'false'},handleDOMEvents:soundEvents},
+    editorProps:{attributes:{class:'academic-editor','data-section-id':section.id,'aria-label':'Write '+section.title,spellcheck:'false',autocorrect:'off'},handleDOMEvents:soundEvents},
     onUpdate:({editor})=>useWorkspace.getState().updateSection(section.id,syncQuotationText(editor.getJSON() as any)),
     onFocus:({editor})=>callbacks.activate(editor),
     onBlur:()=>{void activity.flush();},

@@ -17,8 +17,8 @@ function distance(a:string,b:string,limit:number){
   return previous[b.length];
 }
 
-/** Only a unique close specialist term may be corrected automatically. */
-export function personalWordCorrection(word:string,terms:Iterable<string>):string|undefined{
+/** Suggest a learned term only when it is the unique closest match. */
+export function personalWordSuggestion(word:string,terms:Iterable<string>):string|undefined{
   if(word.length<5)return;
   const lower=word.toLowerCase(),limit=word.length>=10?2:1;
   let best:number=limit+1,result:string|undefined,ambiguous=false;

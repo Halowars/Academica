@@ -68,7 +68,7 @@ The outline keeps its saved open/closed state while resizing. At desktop and iPa
 
 Use two fingers to pinch the document, or the percentage control in the bottom-right corner, to zoom from 25% to 500%. The popup includes a slider, presets, and Fit page width. Zoom is shared by Write, Read, bibliography, and Paper views, and does not change font size, pagination, submission formatting, or toolbar size. A pinch keeps the document point under your fingers in view. Touch input and native iPad Safari still need physical-device verification; responsive browser layouts and the shared gesture logic are checked here.
 
-Spelling suggestions include **Ignore in this paper**, remembered for the current paper, and **Add to my dictionary**, remembered across papers in this browser. Learned terms become correction suggestions. A completed misspelling is corrected automatically only when it is unknown to the English dictionary and uniquely close to a learned specialist term; short or ambiguous matches stay manual. Undo restores the original spelling and prevents that correction being repeated in the current editor session. Exact verified source quotations remain protected from spelling corrections. No spelling text leaves the browser.
+Spelling suggestions include **Ignore in this paper**, remembered for the current paper, and **Add to my dictionary**, remembered across papers in this browser. Click an underlined word to see suggestions, including learned terms. Your text changes only when you choose a replacement. Exact verified source quotations remain protected from spelling corrections. No spelling text leaves the browser.
 
 ### 0.5 research and layout update
 

@@ -44,6 +44,7 @@ export function NotesEditor({ value, onChange, typingSound, inDesk = false }: No
     onChange={event => onChange(event.target.value)}
     onKeyDown={indent}
     placeholder={inDesk ? 'Your wider research thoughts, questions, and observations…' : 'Ideas, reading notes, questions to come back to…'}
+    autoCorrect="off"
     spellCheck={inDesk ? undefined : false}
   />;
 }

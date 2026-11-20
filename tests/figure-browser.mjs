@@ -19,8 +19,10 @@ try{
   await page.locator('input[type="file"][accept*=".json"]').setInputFiles({name:'figure-check.academica.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({format:'academica-backup',version:1,paper:fixture,assets:{}}))});
   const editor=page.locator('.academic-editor[data-section-id="figure-test-section"]');
   await editor.waitFor();
+  assert.equal(await editor.getAttribute('autocorrect'),'off');
   await page.getByRole('button',{name:'Notes',exact:true}).click();
   const notes=page.getByRole('textbox',{name:'Private project notes'});await notes.waitFor();
+  assert.equal(await notes.getAttribute('autocorrect'),'off');
   assert.equal(await notes.inputValue(),'PRIVATE_NOTE_SHEET_BROWSER_CHECK');
   await notes.fill('PRIVATE_NOTE_SHEET_BROWSER_CHECK\nQuestions for the next draft.');
   await notes.press('End');await notes.press('Tab');await notes.press('n');
@@ -29,6 +31,7 @@ try{
   await page.getByRole('button',{name:'Open in research desk',exact:true}).click();
   const desk=page.getByRole('region',{name:'Research desk',exact:true});
   const deskNotes=desk.getByRole('textbox',{name:'Research desk notes editor',exact:true});
+  assert.equal(await deskNotes.getAttribute('autocorrect'),'off');
   assert.equal(await deskNotes.inputValue(),fullPageNotes,'The research desk must open the same notes');
   await page.getByRole('button',{name:'Read',exact:true}).click();
   assert.equal(await deskNotes.isVisible(),true,'Notes must stay open in Read view');
@@ -161,6 +164,19 @@ try{
   assert.equal(breakPlays.filter(play=>play.src.endsWith('/cat/meow.mp3')).length,1);
   const gamePlays=breakPlays.filter(play=>play.src.endsWith('/jigsaw/game-quote.mp3'));assert.equal(gamePlays.length,3,'Each Jigsaw command must play the quote once');for(const play of gamePlays){assert.equal(play.volume,.5);assert.equal(play.rate,1);}
   assert.ok(!(await editor.innerText()).includes('/jigsaw'));assert.ok(!(await editor.innerText()).includes('/cat'));
+  await editor.focus();await page.keyboard.press('Control+End');await page.keyboard.press('Enter');
+  await page.keyboard.type('electrochromix');
+  await editor.locator('.spell-misspelling[data-word="electrochromix"]').click();
+  const spellingMenu=page.getByRole('dialog',{name:'Spelling suggestions'});
+  await spellingMenu.getByRole('button',{name:/Add to my dictionary/}).click();
+  await editor.focus();await page.keyboard.press('Control+End');await page.keyboard.press('Enter');
+  await page.keyboard.type('drirections irections electrochromxi,');
+  const typo=editor.locator('.spell-misspelling[data-word="electrochromxi"]');
+  await typo.waitFor();
+  assert.ok((await editor.innerText()).includes('drirections irections electrochromxi,'));
+  await typo.click();
+  await spellingMenu.getByRole('button',{name:'electrochromix',exact:true}).click();
+  assert.ok((await editor.innerText()).includes('drirections irections electrochromix,'));
   await page.getByRole('button',{name:'Notes',exact:true}).click();assert.ok((await notes.inputValue()).includes('Questions for the next draft.'));
   await page.reload();await page.getByRole('button',{name:'Notes',exact:true}).click();assert.ok((await notes.inputValue()).includes('Questions for the next draft.'),'Notes must survive a page reload');
   assert.deepEqual(errors,[],'The writing workflow must not throw browser errors');

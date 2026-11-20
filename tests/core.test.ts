@@ -29,7 +29,7 @@ import {printedPageLabels,findDOI} from '../src/lib/pdf-source';
 import {ArticleReadError,assertArticlePage,publicReaderTarget,sourceFromReaderResponse,sourceFromHTML,sourceFromPlainText,mergeReaderText} from '../src/lib/article-text';
 import {exportWord} from '../src/lib/exports';
 import {orderedOutline,moveOutlineItem,zoomValue,fitScale} from '../src/lib/workspace-preferences';
-import {dictionaryWords,personalWordCorrection} from '../src/lib/personal-dictionary';
+import {dictionaryWords,personalWordSuggestion} from '../src/lib/personal-dictionary';
 import {installZoomGestures} from '../src/lib/zoom-gestures';
 import {createDocumentScaler} from '../src/lib/document-scaler';
 import {createElement} from 'react';
@@ -264,7 +264,7 @@ test('Sidebar preferences discard duplicates and deleted IDs, and include newly 
 test('Document zoom clamps invalid input and fits a half-screen viewport without changing page dimensions',()=>{assert.equal(zoomValue('fit'),'fit');assert.equal(zoomValue('bad'),'fit');assert.equal(zoomValue('10'),'5');assert.equal(zoomValue('.1'),'0.25');assert.equal(zoomValue('1.234'),'1.23');assert.ok(fitScale(334,816)<.4);assert.equal(fitScale(1800,816),1);});
 test('Zoom keeps physical page and font dimensions fixed while resizing its scrollable stage',()=>{const stage=document.createElement('div'),surface=document.createElement('div');surface.style.cssText='width:816px;height:2140px;font-size:16px;line-height:32px';stage.append(surface);document.body.append(stage);const scaler=createDocumentScaler(surface);for(const scale of [.25,2,.5,5,1]){scaler.setScale(scale);assert.equal(surface.style.width,'816px');assert.equal(surface.style.height,'2140px');assert.equal(surface.style.fontSize,'16px');assert.equal(surface.style.lineHeight,'32px');assert.equal(surface.style.zoom,'');assert.equal(surface.style.transform,`scale(${scale})`);assert.equal(parseFloat(stage.style.width),816*scale);assert.equal(parseFloat(stage.style.height),2140*scale);}surface.style.height='3224px';scaler.refresh();assert.equal(stage.style.height,'3224px');for(const invalid of [NaN,Infinity,0,-1])scaler.setScale(invalid);assert.equal(scaler.getScale(),1);scaler.destroy();stage.remove();});
 test('Pinch scales the complete sheet around the fingers while single-finger input remains native',()=>{const viewport=document.createElement('div'),stage=document.createElement('div'),surface=document.createElement('div'),scroll=document.createElement('div');surface.style.cssText='width:816px;height:1056px';viewport.append(stage);stage.append(surface);document.body.append(viewport);const scaler=createDocumentScaler(surface);scaler.setScale(1);let committed=0;surface.getBoundingClientRect=()=>({left:0,top:0,width:816*scaler.getScale(),height:1056*scaler.getScale()}) as DOMRect;const cleanup=installZoomGestures(viewport,surface,scroll,value=>{committed=value;},scaler);const touch=(type:string,touches:{clientX:number;clientY:number}[])=>{const event=new win.Event(type,{cancelable:true});Object.defineProperty(event,'touches',{value:touches});viewport.dispatchEvent(event as any);return event;};const one=touch('touchstart',[{clientX:100,clientY:100}]);assert.equal(one.defaultPrevented,false);const start=touch('touchstart',[{clientX:100,clientY:100},{clientX:200,clientY:100}]);assert.equal(start.defaultPrevented,true);touch('touchmove',[{clientX:50,clientY:100},{clientX:250,clientY:100}]);touch('touchend',[]);assert.equal(committed,2);assert.equal(surface.style.transform,'scale(2)');assert.equal(surface.style.zoom,'');assert.equal(stage.style.width,'1632px');assert.equal(stage.style.height,'2112px');assert.equal(scroll.scrollTop,100);cleanup();scaler.destroy();viewport.remove();});
-test('Personal terminology suggests unique close typos but leaves short and ambiguous words alone',()=>{assert.equal(personalWordCorrection('electrochromxi',['electrochromix']),'electrochromix');assert.equal(personalWordCorrection('Electrochromxi',['electrochromix']),'Electrochromix');assert.equal(personalWordCorrection('electrochromix',['electrochromix']),undefined);assert.equal(personalWordCorrection('cat',['cats']),undefined);assert.equal(personalWordCorrection('nanoflui',['nanofluid','nanofluix']),undefined);assert.equal(personalWordCorrection('unrelated',['electrochromix']),undefined);assert.deepEqual(dictionaryWords(['nanofluid','nanofluid',null,'<bad>'] ),['nanofluid']);});
+test('Personal terminology suggests unique close typos but leaves short and ambiguous words alone',()=>{assert.equal(personalWordSuggestion('electrochromxi',['electrochromix']),'electrochromix');assert.equal(personalWordSuggestion('Electrochromxi',['electrochromix']),'Electrochromix');assert.equal(personalWordSuggestion('electrochromix',['electrochromix']),undefined);assert.equal(personalWordSuggestion('cat',['cats']),undefined);assert.equal(personalWordSuggestion('nanoflui',['nanofluid','nanofluix']),undefined);assert.equal(personalWordSuggestion('unrelated',['electrochromix']),undefined);assert.deepEqual(dictionaryWords(['nanofluid','nanofluid',null,'<bad>'] ),['nanofluid']);});
 test('Read mode with no source and no focused quote renders a usable empty desk instead of crashing',()=>{const noop=()=>{};const html=renderToStaticMarkup(createElement(SourceReader,{paper:createPaper(),sourceId:undefined,focus:null,onSelect:noop,onSources:noop,onImportText:noop,onQuote:noop,notify:noop}));assert.ok(html.includes('Open a source to read it here.'));});
 const ownerA=storageFor('unit-owner-a'),ownerB=storageFor('unit-owner-b');await ownerA.saveLocal({paper:p,revision:2,dirty:false});await ownerA.pref('active-paper',p.id);await ownerA.saveLocalRevision({id:uid(),paperId:p.id,name:'Milestone',createdAt:new Date().toISOString(),paper:p});
 const remembered=await ownerA.pref('active-paper');test('The active paper is remembered explicitly',()=>assert.equal(remembered,p.id));assert.equal((await ownerA.localPapers())[0].paper.id,p.id);count++;console.log('✓ Local structured paper survives a fresh read');assert.equal((await ownerB.localPapers()).length,0);count++;console.log('✓ Different account caches stay separate');assert.equal((await ownerA.localRevisions(p.id))[0].paper?.id,p.id);count++;console.log('✓ Local revisions retain the complete snapshot');
@@ -383,8 +383,19 @@ try{
   await import('../src/spell.worker');
   const initializing=workerScope.onmessage({data:{type:'init',base:'https://example.test/',words:[]}});
   await workerScope.onmessage({data:{type:'add',word:'electrochromix'}});await initializing;
-  await workerScope.onmessage({data:{type:'check',id:700,blocks:[{pos:1,text:'Electrochromix electrochromxi electrochromxi'}]}});
-  test('The worker learns during initialization, accepts capitalization, and corrects only completed specialist typos',()=>{const output=messages.find(m=>m.id===700);assert.equal(output.errors.length,2);assert.equal(output.corrections.length,1);assert.equal(output.corrections[0].replacement,'electrochromix');});
+  await workerScope.onmessage({data:{type:'check',id:700,blocks:[{pos:1,text:'Electrochromix electrochromxi, drirections irections electrochromxi'}]}});
+  test('Background spelling flags completed and unfinished typos without proposing edits to the document',()=>{
+    const result=messages.find(m=>m.id===700);
+    assert.deepEqual(result,{
+      id:700,
+      errors:[
+        {from:16,to:30,word:'electrochromxi'},
+        {from:32,to:43,word:'drirections'},
+        {from:44,to:53,word:'irections'},
+        {from:54,to:68,word:'electrochromxi'}
+      ]
+    });
+  });
   await workerScope.onmessage({data:{type:'ignore',words:['nanofluidzz']}});
   await workerScope.onmessage({data:{type:'check',id:701,blocks:[{pos:1,text:'nanofluidzz'}]}});
   await workerScope.onmessage({data:{type:'ignore',words:[]}});
